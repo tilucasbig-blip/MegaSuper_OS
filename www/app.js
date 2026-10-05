@@ -2690,7 +2690,8 @@ async function criarNovoUsuario(e) {
   
   const nome = document.getElementById("user-new-nome").value.trim();
   const usuario = document.getElementById("user-new-usuario").value.trim();
-  const email = `${usuario.toLowerCase().replace(/\s+/g, '')}@empresa.com`;
+  const emailInp = document.getElementById("user-new-email");
+  const email = emailInp && emailInp.value.trim() ? emailInp.value.trim() : `${usuario.toLowerCase().replace(/\s+/g, '')}@empresa.com`;
   const cargo = document.getElementById("user-new-cargo").value;
   const loja = document.getElementById("user-new-loja").value || null;
   const checkedBoxes = Array.from(document.querySelectorAll("input[name='user-new-tipos-equipamentos_item']:checked")).map(cb => cb.value);
@@ -2809,6 +2810,8 @@ function abrirEditarUsuario(uid) {
   document.getElementById("user-edit-uid").value = user.uid || user.id;
   document.getElementById("user-edit-nome").value = user.nome;
   document.getElementById("user-edit-usuario").value = user.usuario;
+  const userEditEmailEl = document.getElementById("user-edit-email");
+  if (userEditEmailEl) userEditEmailEl.value = user.email || "";
   document.getElementById("user-edit-status").value = String(user.ativo);
   
   // Popular cargos no select de editar
@@ -2846,6 +2849,8 @@ async function salvarEdicaoUsuario(e) {
   const uid = document.getElementById("user-edit-uid").value;
   const nome = document.getElementById("user-edit-nome").value.trim();
   const usuario = document.getElementById("user-edit-usuario").value.trim();
+  const emailInp = document.getElementById("user-edit-email");
+  const email = emailInp && emailInp.value.trim() ? emailInp.value.trim() : `${usuario.toLowerCase().replace(/\s+/g, '')}@empresa.com`;
   const cargo = document.getElementById("user-edit-cargo").value;
   const loja = document.getElementById("user-edit-loja").value || null;
   const ativo = document.getElementById("user-edit-status").value === "true";
@@ -2869,8 +2874,6 @@ async function salvarEdicaoUsuario(e) {
   }
   
   try {
-    const email = `${usuario.toLowerCase().replace(/\s+/g, '')}@empresa.com`;
-    
     // Atualiza no cache local e persiste no Supabase public.users
     const updates = {
       nome: nome,
