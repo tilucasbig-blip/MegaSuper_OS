@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS public.app_config (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Inserir ou atualizar a chave do Resend (Substitua 'SUA_CHAVE_RESEND_AQUI' pela sua chave da Resend)
+-- Inserir ou atualizar a chave do Resend (Cole sua chave do Resend no lugar de COLE_SUA_CHAVE_RESEND_AQUI no Supabase SQL Editor)
 INSERT INTO public.app_config (chave, valor)
-VALUES ('resend_api_key', 'SUA_CHAVE_RESEND_AQUI')
+VALUES ('resend_api_key', 'COLE_SUA_CHAVE_RESEND_AQUI')
 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;
 
 -- 3. Função que monta o e-mail HTML e envia via API do Resend
@@ -149,7 +149,8 @@ BEGIN
         url := 'https://api.resend.com/emails',
         headers := jsonb_build_object(
             'Content-Type', 'application/json',
-            'Authorization', 'Bearer ' || v_api_key
+            'Authorization', 'Bearer ' || v_api_key,
+            'User-Agent', 'MegaSuperOS/1.0'
         ),
         body := jsonb_build_object(
             'from', 'Mega Super TI <onboarding@resend.dev>',
