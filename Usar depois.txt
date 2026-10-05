@@ -1,0 +1,282 @@
+Usar depois 
+
+Perfeito 👌 Vou te entregar um **PROMPT COMPLETO** para você usar no **FlutterFlow AI Generator**, já estruturado com:
+
+* 📱 Estrutura do App
+* 🔐 3 níveis de acesso
+* 🗂 Modelagem do Firebase
+* 💬 Chat com mídia
+* 📊 Dashboard do Diretor com gráfico
+* 📌 Status organizados
+
+Você pode copiar e colar esse prompt no FlutterFlow.
+
+---
+
+# 🚀 PROMPT PARA FLUTTERFLOW (APP DE ORDEM DE SERVIÇO - OS)
+
+Crie um aplicativo mobile chamado **Sistema de OS - TI Corporativo** utilizando **FlutterFlow + Firebase (Firestore + Storage + Auth)**.
+
+---
+
+## 🔐 SISTEMA DE AUTENTICAÇÃO
+
+Utilizar Firebase Authentication com login por:
+
+* Email e senha
+
+Criar 3 níveis de acesso (campo `role` na coleção Users):
+
+* `usuario`
+* `ti`
+* `diretor`
+
+Redirecionamento após login:
+
+* Usuario → Dashboard Usuario
+* TI → Dashboard TI
+* Diretor → Dashboard Diretor
+
+---
+
+# 🗄 ESTRUTURA DO BANCO DE DADOS (FIREBASE)
+
+## 📂 Collection: Users
+
+Campos:
+
+* uid (string)
+* nome (string)
+* email (string)
+* role (string) → usuario | ti | diretor
+* ativo (boolean)
+* created_at (timestamp)
+
+---
+
+## 📂 Collection: OS (Ordens de Serviço)
+
+Campos:
+
+* id
+* titulo
+* descricao
+* equipamento (string)
+* categoria (string)
+* status (string)
+* prioridade (string)
+* criado_por (DocumentReference Users)
+* usuarios_envolvidos (List<DocumentReference Users>)
+* tecnico_responsavel (DocumentReference Users)
+* data_criacao (timestamp)
+* data_finalizacao (timestamp)
+* loja_unidade (string)
+
+Status possíveis:
+
+* Aberta
+* Em andamento
+* Pendente
+* Finalizada
+* Cancelada
+
+---
+
+## 📂 Subcollection dentro de OS → Mensagens
+
+Campos:
+
+* mensagem_texto (string)
+* midia_url (string)
+* tipo_midia (foto | video | nenhum)
+* enviado_por (DocumentReference Users)
+* data_envio (timestamp)
+
+Upload de fotos e vídeos usando Firebase Storage.
+
+---
+
+# 🧩 EQUIPAMENTOS DISPONÍVEIS (Dropdown)
+
+Lista fixa de categorias:
+
+* Computador
+* Impressora
+* Monitor
+* Internet
+* Equipamentos de Segurança Eletrônica
+* Controle de Acesso
+* Central de Alarme
+* Cerca Elétrica
+* Equipamentos de Mercado
+* PDV
+* Balança
+* Tablet de Ponto
+* Sistema
+* Servidor
+
+---
+
+# 📱 TELAS DO APP
+
+---
+
+## 👤 DASHBOARD USUARIO
+
+Funções:
+
+✅ Botão "Abrir Nova OS"
+
+Ao abrir OS:
+
+* Selecionar equipamento
+* Digitar descrição
+* Escolher prioridade
+* Anexar foto ou vídeo
+
+Após criar:
+Redirecionar para página "Minhas OS"
+
+---
+
+### 📂 Página Minhas OS
+
+Mostrar OS criadas pelo usuário separadas por status:
+
+Seções:
+
+* 🟡 Abertas
+* 🔵 Em andamento
+* 🟠 Pendentes
+* 🟢 Finalizadas
+* 🔴 Canceladas
+
+Cada OS mostra:
+
+* Número da OS
+* Equipamento
+* Status (com cor)
+* Data de abertura
+
+Ao clicar → abrir detalhes + chat.
+
+---
+
+## 🧑‍💻 DASHBOARD TI
+
+Funções:
+
+✅ Visualizar TODAS as OS
+✅ Filtrar por status
+✅ Alterar status
+✅ Finalizar OS
+✅ Criar OS para usuário
+✅ Adicionar múltiplos usuários na OS
+✅ Criar usuário
+✅ Excluir usuário
+
+Página de detalhes da OS:
+
+* Alterar técnico responsável
+* Adicionar usuários envolvidos
+* Chat completo
+* Upload de mídia
+* Botão "Finalizar OS"
+
+---
+
+## 👔 DASHBOARD DIRETOR
+
+Pode:
+
+✅ Ver todas as OS
+✅ Criar usuários
+✅ Enviar mensagem em qualquer chat
+✅ Não pode excluir OS
+✅ Não altera técnico (opcional)
+
+---
+
+# 📊 DASHBOARD DIRETOR (COM GRÁFICO)
+
+Adicionar um gráfico tipo Pizza (Pie Chart) mostrando:
+
+* % OS Abertas
+* % Em andamento
+* % Pendentes
+* % Finalizadas
+* % Canceladas
+
+Dados puxados em tempo real do Firestore.
+
+Abaixo do gráfico mostrar:
+
+* Total de OS abertas
+* Total finalizadas
+* Total geral
+* OS por categoria
+
+---
+
+# 💬 SISTEMA DE CHAT
+
+Cada OS terá:
+
+* Lista de mensagens em tempo real
+* Campo para digitar texto
+* Botão anexar foto
+* Botão anexar vídeo
+* Mostrar quem enviou
+* Mostrar data e hora
+
+---
+
+# 🎨 DESIGN
+
+Visual moderno corporativo:
+
+* Azul escuro + cinza
+* Status com cores diferentes
+* Cards com sombra leve
+* Ícones para cada tipo de equipamento
+* Interface simples e organizada
+
+---
+
+# 🔐 REGRAS DE SEGURANÇA FIREBASE
+
+Usuarios:
+
+* Só veem OS onde estão em `criado_por` ou `usuarios_envolvidos`.
+
+TI:
+
+* Pode ler e editar todas as OS.
+
+Diretor:
+
+* Pode ler todas as OS.
+* Pode criar usuários.
+* Pode enviar mensagens.
+
+---
+
+# 🚀 FUNCIONALIDADES EXTRAS (Opcional)
+
+* Notificação push quando status mudar
+* Notificação quando nova mensagem for enviada
+* Filtro por data
+* Busca por número da OS
+* Relatório em PDF
+
+---
+
+Se quiser, eu também posso agora:
+
+* ✅ Criar as REGRAS prontas do Firebase
+* ✅ Criar o MODELO visual das telas
+* ✅ Te entregar a estrutura pronta para importar
+* ✅ Melhorar esse prompt para versão mais técnica
+* ✅ Criar um fluxo completo passo a passo no FlutterFlow
+
+Qual você quer que eu faça agora?

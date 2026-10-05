@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função auxiliar para verificar se o usuário está autenticado
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    // Obtém o documento do usuário logado para verificar o cargo (role)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Funções para checar permissões de role
+    function isDiretor() {
+      return isAuthed() && getUserData().role == 'diretor';
+    }
+
+    function isTI() {
+      return isAuthed() && getUserData().role == 'ti';
+    }
+
+    function isStaff() {
+      return isTI() || isDiretor();
+    }
+
+    // ================= REGRAS DE COLEÇÕES =================
+
+    // Coleção: Users
+    match /users/{userId} {
+      allow read: if isAuthed();
+      // Apenas o próprio usuário ou um Diretor pode criar/editar perfis
+      allow create, update: if isAuthed() && (request.auth.uid == userId || isDiretor());
+      allow delete: if isDiretor();
+    }
+
+    // Coleção: Lojas
+    match /lojas/{lojaId} {
+      allow read: if isAuthed();
+      allow write: if isDiretor(); // Apenas Diretor gerencia filiais/lojas
+    }
+
+    // Coleção: Estoque
+    match /estoque/{itemId} {
+      // Apenas TI e Diretor gerenciam e visualizam o estoque
+      allow read, write: if isStaff();
+    }
+
+    // Coleção: Movimentações do Estoque
+    match /movimentacoes_estoque/{movId} {
+      allow read: if isStaff();
+      allow create: if isStaff(); // TI e Diretor registram entradas/saídas
+      allow update, delete: if false; // Histórico de estoque é imutável por segurança
+    }
+
+    // Coleção: Logs do Sistema
+    match /logs/{logId} {
+      allow read: if isStaff();
+      allow create: if isAuthed(); // Qualquer usuário logado pode registrar ações no log
+      allow update, delete: if false; // Logs são de auditoria, nunca devem ser alterados/apagados
+    }
+
+    // Coleção: Notificações
+    match /notificacoes/{notifId} {
+      // O usuário pode ler e atualizar (marcar como lida) apenas suas próprias notificações
+      allow read, update: if isAuthed() && resource.data.user_id == request.auth.uid;
+      // Qualquer usuário/sistema pode criar notificações para outro
+      allow create: if isAuthed();
+      allow delete: if isAuthed() && resource.data.user_id == request.auth.uid;
+    }
+
+    // Coleção: Ordens de Serviço (OS)
+    match /os/{osId} {
+      
+      // Regra de Leitura:
+      // - TI e Diretor leem todas as OS.
+      // - Usuário comum só lê se foi criada por ele ou se ele foi envolvido.
+      allow read: if isStaff() || (
+        isAuthed() && (
+          resource.data.criado_por == request.auth.uid || 
+          request.auth.uid in resource.data.usuarios_envolvidos
+        )
+      );
+
+      // Regra de Criação:
+      // - Qualquer um pode criar, desde que se declare como criador
+      allow create: if isAuthed() && request.resource.data.criado_por == request.auth.uid;
+
+      // Regra de Edição:
+      // - TI pode editar qualquer OS (mudar status, adicionar técnicos/envolvidos, salvar materiais).
+      // - Diretor pode editar para atualizar mensagens (chat) ou outros dados não-técnicos.
+      // - Usuário comum só edita se for o criador do chamado (enviar chat, cancelar chamado).
+      allow update: if isTI() || isDiretor() || (
+        isAuthed() && resource.data.criado_por == request.auth.uid
+      );
+      
+      // Proibido apagar chamados (devem ser apenas cancelados mudando status)
+      allow delete: if false;
+
+      // Subcoleção: Mensagens (Chat Interno da OS)
+      match /mensagens/{msgId} {
+        allow read: if isStaff() || (
+          isAuthed() && (
+            get(/databases/$(database)/documents/os/$(osId)).data.criado_por == request.auth.uid ||
+            request.auth.uid in get(/databases/$(database)/documents/os/$(osId)).data.usuarios_envolvidos
+          )
+        );
+        allow create: if isAuthed() && request.resource.data.enviado_por == request.auth.uid;
+        allow update, delete: if false; // Mensagens enviadas no chat são permanentes
+      }
+    }
+  }
+}

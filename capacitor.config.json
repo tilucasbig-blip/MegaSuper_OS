@@ -1,0 +1,6 @@
+{
+  "appId": "com.empresa.appos",
+  "appName": "Sistema de OS",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      const div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.backgroundColor = '#ff4444';
+      div.style.color = 'white';
+      div.style.zIndex = '999999';
+      div.style.padding = '15px';
+      div.style.fontFamily = 'monospace';
+      div.style.fontSize = '14px';
+      div.style.fontWeight = 'bold';
+      div.style.boxShadow = '0 4px 10px rgba(0,0,0,0.5)';
+      div.innerText = 'JS Error: ' + message + '\nFile: ' + source + ' (Line ' + lineno + ', Col ' + colno + ')';
+      document.body.appendChild(div);
+      return false;
+    };
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mega OS Rede Mega</title>
+  <script>
+    // Anti-flicker: se há sessão salva, esconde login e mostra app ANTES de qualquer CSS/JS externo carregar
+    try {
+      if (localStorage.getItem("app_os_session_uid")) {
+        document.documentElement.classList.add("has-saved-session");
+        var s = document.createElement("style");
+        s.textContent = ".has-saved-session #login-container{display:none!important}.has-saved-session #app{display:flex!important}";
+        document.head.appendChild(s);
+      }
+    } catch (e) {}
+  </script>
+  <!-- Tailwind is avoided as per instructions, using vanilla style.css -->
+  <link rel="stylesheet" href="style.css?v=22">
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QRCode Generator CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Cloudflare Turnstile Captcha -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+
+
+
+  <!-- Container da Tela de Login -->
+  <div id="login-container" class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="logo.jpg" alt="Logo Rede Mega" style="width: 180px; height: auto; margin-bottom: 16px; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+        <h2>OS-REDE MEGA</h2>
+        <p>Informe suas credenciais para acessar o sistema.</p>
+      </div>
+      
+      <div id="login-alert-error" class="login-alert danger" style="display: none;"></div>
+      <div id="login-alert-success" class="login-alert success" style="display: none;"></div>
+
+      <form id="form-login" onsubmit="efetuarLogin(event)">
+        <!-- Honeypot Bot Protection (invisible to humans) -->
+        <div style="display: none; visibility: hidden;" aria-hidden="true">
+          <input type="text" id="login-honeypot" name="login_honeypot" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="login-username">Matrícula, E-mail ou Nome de Usuário *</label>
+          <input type="text" id="login-username" class="input-control" required placeholder="Ex: diretor, tecnico, usuario">
+        </div>
+        
+        <div class="form-group">
+          <label for="login-password">Senha *</label>
+          <div style="position: relative;">
+            <input type="password" id="login-password" class="input-control" required placeholder="Digite sua senha" style="padding-right: 44px;">
+            <button type="button" class="btn-toggle-password" onclick="toggleSenhaVisualizacao('login-password')">
+              <i data-lucide="eye" id="icon-eye-login-password"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="login-lembrar-usuario">
+            <span class="checkmark"></span>
+            Lembrar meu usuário
+          </label>
+        </div>
+
+        <!-- Container do Captcha -->
+        <div id="login-captcha-container" style="display: none; margin-bottom: 20px; justify-content: center; width: 100%;"></div>
+
+        <button type="submit" class="btn" id="btn-login-entrar">
+          <span>Entrar</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <a href="#" class="forgot-password-link" onclick="abrirModal('modal-recuperar-senha')">Esqueci minha senha</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- Main App Header -->
+    <header class="main-header no-print">
+      <div class="header-left">
+        <!-- Hamburger Menu Button for Mobile -->
+        <button class="btn-icon-wrapper mobile-only" onclick="toggleSidebarDrawer(event)" style="margin-right: 8px;">
+          <i data-lucide="menu"></i>
+        </button>
+        <a href="#" class="header-logo" onclick="irParaDashboard()">
+          <img src="logo.jpg" alt="Logo Rede Mega" style="height: 70px; width: auto; border-radius: var(--radius-sm); margin-right: 8px;">
+          <div>
+            <h2>OS-REDE MEGA</h2>
+            <p style="font-size: 10px; color: var(--text-secondary); font-weight: 500;">SISTEMA CORPORATIVO</p>
+          </div>
+        </a>
+      </div>
+      
+      <div class="header-right">
+        <!-- Notification Bell -->
+        <div class="btn-icon-wrapper" onclick="toggleNotificacoes(event)">
+          <i data-lucide="bell"></i>
+          <span id="notif-count" class="badge-counter">0</span>
+        </div>
+        
+        <!-- Notifications Panel -->
+        <div id="notification-panel" class="notification-panel">
+          <div class="notif-header">
+            <h4>Notificações</h4>
+            <span style="font-size: 11px; color: var(--brand-color); cursor: pointer;" onclick="marcarTodasLidas()">Limpar todas</span>
+          </div>
+          <div id="notif-list" class="notif-body">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- User profile -->
+        <div class="user-profile-widget">
+          <div id="user-avatar" class="user-avatar">DS</div>
+          <div class="user-info-text">
+            <p id="user-name">Diretor Carlos Silva</p>
+            <p id="user-role" style="font-size: 10px; color: var(--text-secondary);">Diretor</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area with Sidebar -->
+    <div class="app-container">
+      <!-- Sidebar Backdrop for Mobile -->
+      <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="fecharSidebarDrawer()"></div>
+      <!-- Sidebar Navigation -->
+      <aside id="sidebar" class="sidebar no-print">
+        <div class="sidebar-nav">
+          <a class="nav-link active" id="nav-dashboard" onclick="navegarPara('dashboard')">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Painel Principal</span>
+          </a>
+          <a class="nav-link" id="nav-os" onclick="navegarPara('os')">
+            <i data-lucide="clipboard-list"></i>
+            <span>Ordens de Serviço</span>
+          </a>
+          <a class="nav-link" id="nav-estoque" onclick="navegarPara('estoque')">
+            <i data-lucide="package"></i>
+            <span>Controle de Estoque</span>
+          </a>
+          <a class="nav-link" id="nav-logs" onclick="navegarPara('logs')">
+            <i data-lucide="history"></i>
+            <span>Logs do Sistema</span>
+          </a>
+          <a class="nav-link" id="nav-usuarios" onclick="navegarPara('usuarios')">
+            <i data-lucide="users"></i>
+            <span>Gerenciar Usuários</span>
+          </a>
+          <a class="nav-link" id="nav-equipamentos" onclick="navegarPara('equipamentos')">
+            <i data-lucide="monitor"></i>
+            <span>Cadastrar Equipamento</span>
+          </a>
+        </div>
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <a class="nav-link" onclick="logoutSimulado()" style="color: var(--status-cancelada);">
+            <i data-lucide="log-out"></i>
+            <span>Sair</span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main Body rendering views -->
+      <main class="content-body" id="content-body">
+        <!-- Rendered dynamically by app.js -->
+      </main>
+    </div>
+  </div>
+
+  <!-- ================= MODALS & BOTTOM SHEETS ================= -->
+
+  <!-- Modal: Criar OS -->
+  <div id="modal-criar-os" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Criar Nova Ordem de Serviço</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-criar-os')">&times;</button>
+      </div>
+      <form id="form-criar-os" onsubmit="criarNovaOS(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="os-titulo">Título curto do Problema *</label>
+            <input type="text" id="os-titulo" class="input-control" required placeholder="Ex: Monitor piscando ou Impressora travada">
+          </div>
+          <div class="form-group" id="os-loja-group">
+            <label for="os-loja">Loja / Unidade *</label>
+            <select id="os-loja" class="input-control" required>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <!-- Código do Equipamento / Patrimônio & Scanner -->
+          <div class="form-group" id="os-equipamento-cadastro-group">
+            <label for="os-codigo-patrimonio" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span>Código do Equipamento / Patrimônio *</span>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-secondary" id="btn-toggle-scanner" onclick="ativarWebcamScanner()" style="width: auto; padding: 4px 8px; font-size: 11px; display: flex; align-items: center; gap: 4px; border-color: rgba(99, 102, 241, 0.2); color: var(--primary-color);">
+                  <i data-lucide="aperture" style="width: 12px; height: 12px;"></i> Câmera
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('scanner-file-input').click()" style="width: auto; padding: 4px 8px; font-size: 11px; display: flex; align-items: center; gap: 4px; border-color: rgba(99, 102, 241, 0.2); color: var(--primary-color);">
+                  <i data-lucide="upload" style="width: 12px; height: 12px;"></i> Upload Foto QR
+                </button>
+                <input type="file" id="scanner-file-input" accept="image/*" style="display: none;" onchange="escanearQRCodeDeArquivo(event)">
+              </div>
+            </label>
+            
+            <!-- Scanner Area (Hidden by default) -->
+            <div id="scanner-webcam-container" style="display: none; background: #000; border-radius: var(--radius-md); padding: 12px; text-align: center; margin-bottom: 12px; border: 1px solid var(--border-color); position: relative;">
+              <video id="scanner-video" style="width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--radius-sm);"></video>
+              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px dashed var(--primary-color); width: 140px; height: 140px; pointer-events: none; border-radius: var(--radius-md);"></div>
+              <p style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">Aponte a câmera para o QR Code do equipamento...</p>
+              <button type="button" class="btn btn-secondary" onclick="desativarWebcamScanner()" style="width: auto; padding: 4px 10px; font-size: 11px; margin-top: 6px; color: var(--status-cancelada);">Cancelar Leitura</button>
+            </div>
+
+            <div style="position: relative;">
+              <input type="text" id="os-codigo-patrimonio" class="input-control" placeholder="Digite o código (ex: PAT-HP1102-01, Computador, Internet...)" oninput="aoDigitarCodigoPatrimonio(this.value)" list="datalist-equipamentos-patrimonio" autocomplete="off" required style="letter-spacing: 0.5px;">
+              <datalist id="datalist-equipamentos-patrimonio">
+                <!-- Populated dynamically with registered codes & categories -->
+              </datalist>
+              <input type="hidden" id="os-equipamento" value="Computador">
+              <input type="hidden" id="os-equipamento-cadastro" value="">
+            <!-- Card de Assimilação do Equipamento e Linha do Tempo -->
+            <div id="os-equipamento-feedback" style="display: none; margin-top: 8px;"></div>
+            
+            <!-- Prioridade calculada internamente pelo sistema (invisível para o usuário) -->
+            <input type="hidden" id="os-prioridade" value="Média">
+          </div>
+          </div>
+          <div class="form-group">
+            <label for="os-descricao">Descrição detalhada do Problema *</label>
+            <textarea id="os-descricao" class="input-control" rows="4" required placeholder="Descreva os detalhes, sintomas e o que já foi tentado..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="os-foto">Anexar Foto ou Vídeo (Opcional)</label>
+            <input type="file" id="os-foto" class="input-control" accept="image/*,video/*" onchange="carregarMidiaInput(event)">
+            <input type="hidden" id="os-midia-base64">
+            <input type="hidden" id="os-midia-tipo" value="nenhum">
+            <div id="os-midia-preview" style="margin-top: 10px; max-height: 120px; overflow: hidden; display: none; border-radius: var(--radius-sm);"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-criar-os')">Cancelar</button>
+          <button type="submit" class="btn">Abrir Ordem de Serviço</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Adicionar Material -->
+  <div id="modal-adicionar-material" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Adicionar Material à OS</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-adicionar-material')">&times;</button>
+      </div>
+      <form id="form-adicionar-material" onsubmit="adicionarMaterialOS(event)">
+        <input type="hidden" id="material-os-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="material-select">Escolher do Estoque *</label>
+            <select id="material-select" class="input-control" required onchange="atualizarPrecoUnitarioMaterial(this.value)">
+              <option value="">-- Selecione o Material --</option>
+              <option value="custom">-- Adicionar Outro Material (Fora do Estoque) --</option>
+              <!-- Populated dynamically from inventory -->
+            </select>
+          </div>
+          <div class="form-group" id="material-custom-group" style="display: none;">
+            <label for="material-nome-custom">Nome do Material Customizado *</label>
+            <input type="text" id="material-nome-custom" class="input-control" placeholder="Digite o nome do material">
+          </div>
+          <div class="form-group">
+            <label for="material-quantidade">Quantidade *</label>
+            <input type="number" id="material-quantidade" class="input-control" required min="1" value="1" oninput="calcularValorTotalMaterial()">
+          </div>
+          <div class="form-group">
+            <label for="material-valor-unitario">Valor Unitário (R$) *</label>
+            <input type="number" id="material-valor-unitario" class="input-control" required min="0.01" step="0.01" value="0.00" oninput="calcularValorTotalMaterial()">
+          </div>
+          <div class="form-group">
+            <label>Valor Total</label>
+            <div id="material-valor-total" style="font-size: 18px; font-weight: 700; color: var(--status-finalizada); padding: 8px 0;">R$ 0,00</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-adicionar-material')">Cancelar</button>
+          <button type="submit" class="btn">Adicionar Material</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Rejeição de Materiais -->
+  <div id="modal-rejeitar-material" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Rejeitar Solicitação de Materiais</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-rejeitar-material')">&times;</button>
+      </div>
+      <form id="form-rejeitar-material" onsubmit="confirmarRejeicaoMaterial(event)">
+        <input type="hidden" id="rejeitar-os-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="rejeitar-motivo">Motivo da Rejeição (Obrigatório) *</label>
+            <textarea id="rejeitar-motivo" class="input-control" rows="4" required placeholder="Explique por que este material foi rejeitado pelo setor diretivo..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-rejeitar-material')">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Confirmar Rejeição</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Criar Usuário -->
+  <div id="modal-criar-usuario" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cadastrar Novo Usuário</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-criar-usuario')">&times;</button>
+      </div>
+      <form id="form-criar-usuario" onsubmit="criarNovoUsuario(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="user-new-nome">Nome Completo *</label>
+            <input type="text" id="user-new-nome" class="input-control" required placeholder="Ex: Roberto Alencar">
+          </div>
+          <div class="form-group">
+            <label for="user-new-usuario">Usuário / Matrícula *</label>
+            <input type="text" id="user-new-usuario" class="input-control" required placeholder="Ex: roberto123 ou 4567">
+          </div>
+
+          <div class="form-group">
+            <label for="user-new-cargo">Cargo *</label>
+            <select id="user-new-cargo" class="input-control" required onchange="aoMudarCargoNovoUsuario(this.value)">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="user-new-loja">Loja / Unidade</label>
+            <select id="user-new-loja" class="input-control">
+              <option value="">Nenhuma (Corporativo / TI)</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Tipos de Equipamentos que Opera / Utiliza</span>
+              <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">(Acesso na Abertura de OS)</span>
+            </label>
+            <div id="user-new-tipos-equipamentos" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; background: var(--bg-tertiary); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-height: 220px; overflow-y: auto;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-criar-usuario')">Cancelar</button>
+          <button type="submit" class="btn">Cadastrar Usuário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Criar Equipamento -->
+  <div id="modal-criar-equipamento" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cadastrar Novo Equipamento</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-criar-equipamento')">&times;</button>
+      </div>
+      <form id="form-criar-equipamento" onsubmit="criarNovoEquipamento(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="eq-usuario">Setor</label>
+            <input type="text" id="eq-usuario" class="input-control" placeholder="Digite ou selecione o setor (ex: Compras / Caixa 01)" list="datalist-usuarios-cadastrados">
+            <datalist id="datalist-usuarios-cadastrados">
+              <!-- Populated dynamically with registered users -->
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label for="eq-nome">Nome do Equipamento *</label>
+            <input type="text" id="eq-nome" class="input-control" required placeholder="Ex: Impressora HP P1102">
+          </div>
+          <div class="form-group">
+            <label for="eq-marca">Marca *</label>
+            <input type="text" id="eq-marca" class="input-control" required placeholder="Ex: HP">
+          </div>
+          <div class="form-group">
+            <label for="eq-modelo">Modelo *</label>
+            <input type="text" id="eq-modelo" class="input-control" required placeholder="Ex: LaserJet P1102">
+          </div>
+          <div class="form-group">
+            <label for="eq-patrimonio">Código Patrimonial (QR Code) *</label>
+            <input type="text" id="eq-patrimonio" class="input-control" required placeholder="Ex: PAT-HP1102-01">
+          </div>
+          <div class="form-group">
+            <label for="eq-serial">Número de Série *</label>
+            <input type="text" id="eq-serial" class="input-control" required placeholder="Ex: 77698536">
+          </div>
+          <div class="form-group">
+            <label for="eq-lote">Número do Lote *</label>
+            <input type="text" id="eq-lote" class="input-control" required placeholder="Ex: faturamento">
+          </div>
+          <div class="form-group">
+            <label for="eq-dono">Dono / Responsável pelo Equipamento</label>
+            <input type="text" id="eq-dono" class="input-control" placeholder="Ex: João Silva (Faturamento / Administrativo)">
+          </div>
+          <div class="form-group">
+            <label for="eq-loja">Loja / Unidade *</label>
+            <select id="eq-loja" class="input-control" required>
+              <!-- Populated dynamically with -- Selecione a Loja -- -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="eq-valor">Valor Estimado de Novo (R$)</label>
+            <input type="number" id="eq-valor" class="input-control" step="0.01" value="1500.00">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-criar-equipamento')">Cancelar</button>
+          <button type="submit" class="btn">Cadastrar Equipamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Detalhes do Equipamento & QR Code -->
+  <div id="modal-detalhes-equipamento" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px; width: 90%;">
+      <div class="modal-header">
+        <h3>Prontuário do Equipamento</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-detalhes-equipamento')">&times;</button>
+      </div>
+      <div class="modal-body" style="color: var(--text-primary); padding: 24px;">
+        <div style="display: flex; gap: 32px; flex-wrap: wrap;">
+          
+          <!-- Coluna Esquerda: Dados Básicos & QR -->
+          <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 20px; border-right: 1px solid var(--border-color); padding-right: 24px;">
+            <div style="text-align: center;">
+              <h4 id="det-eq-nome" style="font-size: 20px; font-weight: 800; margin-bottom: 6px; color: #fff;">-</h4>
+              <span id="det-eq-patrimonio" class="badge" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-color); border: 1px solid rgba(99, 102, 241, 0.2); font-family: monospace; font-size: 13px; padding: 4px 10px;">-</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Setor</p>
+                <p id="det-eq-usuario" style="font-weight: 600; color: #38bdf8;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Dono / Responsável</p>
+                <p id="det-eq-dono" style="font-weight: 600; color: #818cf8;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Loja / Unidade</p>
+                <p id="det-eq-loja" style="font-weight: 600;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Marca</p>
+                <p id="det-eq-marca" style="font-weight: 600;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Modelo</p>
+                <p id="det-eq-modelo" style="font-weight: 600;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Número de Série</p>
+                <p id="det-eq-serial" style="font-weight: 600; font-family: monospace;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Número do Lote</p>
+                <p id="det-eq-lote" style="font-weight: 600;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Valor Estimado (Novo)</p>
+                <p id="det-eq-valor" style="font-weight: 600; color: #10B981;">-</p>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 16px; text-align: center;">
+              <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Etiqueta Patrimonial (QR Code)</p>
+              <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+                <div id="det-eq-qrcode" style="background: white; padding: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); display: inline-block;"></div>
+              </div>
+              <button class="btn" onclick="imprimirQRCodeEquipamento()" style="width: auto; margin: 0 auto; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="printer"></i> Imprimir Etiqueta
+              </button>
+            </div>
+          </div>
+
+          <!-- Coluna Direita: Viabilidade, Linha do Tempo e Peças -->
+          <div style="flex: 1.6; min-width: 320px; display: flex; flex-direction: column; gap: 24px; max-height: 550px; overflow-y: auto; padding-right: 8px;">
+            
+            <!-- Análise de Viabilidade Financeira -->
+            <div id="det-eq-viabilidade-card" style="padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff;">Viabilidade Financeira</span>
+                <span id="det-eq-viabilidade-tag" class="badge" style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-md);">-</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
+                <span style="color: var(--text-secondary);">Gasto total em manutenção:</span>
+                <span id="det-eq-viabilidade-gasto" style="font-weight: 700;">-</span>
+              </div>
+              <div style="background-color: var(--bg-tertiary); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px;">
+                <div id="det-eq-viabilidade-bar" style="height: 100%; width: 0%; transition: width 0.6s ease-in-out;"></div>
+              </div>
+            </div>
+
+            <!-- Peças Substituídas -->
+            <div>
+              <h5 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="wrench" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Peças e Componentes Substituídos
+              </h5>
+              <div id="det-eq-pecas-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; max-height: 120px; overflow-y: auto; font-size: 13px;">
+                <!-- Replaced parts list will render here -->
+              </div>
+            </div>
+
+            <!-- Linha do Tempo de OS -->
+            <div>
+              <h5 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="git-commit" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Linha do Tempo de Manutenções
+              </h5>
+              <div id="det-eq-timeline-container" style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; border-left: 2px solid var(--border-color);">
+                <!-- Timeline elements will render here -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-secondary" onclick="fecharModal('modal-detalhes-equipamento')">Fechar</button>
+        <button class="btn btn-primary" onclick="abrirModalEditarEquipamento(currentSelectedEquipment ? currentSelectedEquipment.id : null)" style="width: auto; display: inline-flex; align-items: center; gap: 8px;">
+          <i data-lucide="edit-3"></i> Editar Equipamento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Equipamento -->
+  <div id="modal-editar-equipamento" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editar Equipamento</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-editar-equipamento')">&times;</button>
+      </div>
+      <form id="form-editar-equipamento" onsubmit="salvarEdicaoEquipamento(event)">
+        <input type="hidden" id="edit-eq-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="edit-eq-usuario">Setor</label>
+            <input type="text" id="edit-eq-usuario" class="input-control" placeholder="Digite ou selecione o setor (ex: Compras / Caixa 01)" list="datalist-usuarios-cadastrados">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-nome">Nome do Equipamento *</label>
+            <input type="text" id="edit-eq-nome" class="input-control" required placeholder="Ex: Impressora HP P1102">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-marca">Marca *</label>
+            <input type="text" id="edit-eq-marca" class="input-control" required placeholder="Ex: HP">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-modelo">Modelo *</label>
+            <input type="text" id="edit-eq-modelo" class="input-control" required placeholder="Ex: LaserJet P1102">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-patrimonio">Código Patrimonial (QR Code) *</label>
+            <input type="text" id="edit-eq-patrimonio" class="input-control" required placeholder="Ex: PAT-HP1102-01">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-serial">Número de Série *</label>
+            <input type="text" id="edit-eq-serial" class="input-control" required placeholder="Ex: 77698536">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-lote">Número do Lote *</label>
+            <input type="text" id="edit-eq-lote" class="input-control" required placeholder="Ex: faturamento">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-dono">Dono / Responsável pelo Equipamento</label>
+            <input type="text" id="edit-eq-dono" class="input-control" placeholder="Ex: João Silva (Faturamento / Administrativo)">
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-loja">Loja / Unidade *</label>
+            <select id="edit-eq-loja" class="input-control" required>
+              <!-- Populated dynamically with stores -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-eq-valor">Valor Estimado de Novo (R$)</label>
+            <input type="number" id="edit-eq-valor" class="input-control" step="0.01" value="1500.00">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-editar-equipamento')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Usuário -->
+  <div id="modal-editar-usuario" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editar Usuário</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-editar-usuario')">&times;</button>
+      </div>
+      <form id="form-editar-usuario" onsubmit="salvarEdicaoUsuario(event)">
+        <input type="hidden" id="user-edit-uid">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="user-edit-nome">Nome Completo *</label>
+            <input type="text" id="user-edit-nome" class="input-control" required placeholder="Ex: Roberto Alencar">
+          </div>
+          <div class="form-group">
+            <label for="user-edit-usuario">Usuário / Matrícula *</label>
+            <input type="text" id="user-edit-usuario" class="input-control" required placeholder="Ex: roberto123 ou 4567">
+          </div>
+
+          <div class="form-group">
+            <label for="user-edit-cargo">Cargo *</label>
+            <select id="user-edit-cargo" class="input-control" required>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="user-edit-loja">Loja / Unidade</label>
+            <select id="user-edit-loja" class="input-control">
+              <option value="">Nenhuma (Corporativo / TI)</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="user-edit-status">Status *</label>
+            <select id="user-edit-status" class="input-control" required>
+              <option value="true">Ativo</option>
+              <option value="false">Inativo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Tipos de Equipamentos que Opera / Utiliza</span>
+              <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">(Acesso na Abertura de OS)</span>
+            </label>
+            <div id="user-edit-tipos-equipamentos" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; background: var(--bg-tertiary); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-height: 220px; overflow-y: auto;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-editar-usuario')">Cancelar</button>
+          <button type="submit" class="btn">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Adicionar/Entrada de Estoque -->
+  <div id="modal-adicionar-estoque" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Entrada de Material no Estoque</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-adicionar-estoque')">&times;</button>
+      </div>
+      <form id="form-adicionar-estoque" onsubmit="adicionarEstoqueItem(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="estoque-tipo-cadastro">Tipo de Operação *</label>
+            <select id="estoque-tipo-cadastro" class="input-control" onchange="alternarTipoCadastroEstoque(this.value)">
+              <option value="existente">Adicionar à Peça Existente (Reposição)</option>
+              <option value="novo">Cadastrar Novo Produto (Novo Item)</option>
+            </select>
+          </div>
+          
+          <!-- Seção de Item Existente -->
+          <div id="estoque-grupo-existente" class="form-group">
+            <label for="estoque-item-select">Selecionar Peça do Inventário *</label>
+            <select id="estoque-item-select" class="input-control">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Seção de Novo Item (Escondida por padrão) -->
+          <div id="estoque-grupo-novo" style="display: none;">
+            <div class="form-group">
+              <label for="estoque-novo-nome">Nome do Material/Peça *</label>
+              <input type="text" id="estoque-novo-nome" class="input-control" placeholder="Ex: Memória RAM DDR4 16GB">
+            </div>
+            <div class="form-group">
+              <label for="estoque-novo-preco">Preço Unitário de Custo (R$) *</label>
+              <input type="number" id="estoque-novo-preco" class="input-control" min="0.01" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label for="estoque-novo-minimo">Estoque Mínimo Alerta *</label>
+              <input type="number" id="estoque-novo-minimo" class="input-control" min="1" value="5">
+            </div>
+          </div>
+
+          <!-- Quantidade Comum a ambos -->
+          <div class="form-group">
+            <label for="estoque-quantidade-adicionar">Quantidade a Adicionar *</label>
+            <input type="number" id="estoque-quantidade-adicionar" class="input-control" required min="1" value="1">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-adicionar-estoque')">Cancelar</button>
+          <button type="submit" class="btn">Confirmar Entrada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bottom Sheet: Detalhes da OS & Chat -->
+  <div id="os-details-sheet" class="bottom-sheet">
+    <div class="bottom-sheet-drag" onclick="fecharOSDetails()"></div>
+    <div class="modal-header" style="border-top: none; padding: 10px 32px 16px;">
+      <div>
+        <span id="sheet-os-id" class="os-id-cell" style="font-size: 18px;">OS-XXXX</span>
+        <h3 id="sheet-os-titulo" style="margin-top: 4px;">Título da Ordem de Serviço</h3>
+      </div>
+      <button class="modal-close-btn" onclick="fecharOSDetails()">&times;</button>
+    </div>
+    
+    <div class="bottom-sheet-body">
+      <div class="os-details-container">
+        <!-- Coluna Esquerda: Informações Técnicas da OS -->
+        <div class="os-details-info">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="info-group">
+              <div class="info-label">Status</div>
+              <div id="sheet-os-status">--</div>
+            </div>
+            <div class="info-group">
+              <div class="info-label">Prioridade</div>
+              <div id="sheet-os-prioridade">--</div>
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="info-group">
+              <div class="info-label">Loja / Unidade</div>
+              <div id="sheet-os-loja" class="info-value">--</div>
+            </div>
+            <div class="info-group">
+              <div class="info-label">Equipamento</div>
+              <div id="sheet-os-equipamento" class="info-value">--</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="info-group">
+              <div class="info-label">Aberto Por</div>
+              <div id="sheet-os-criador" class="info-value">--</div>
+            </div>
+            <div class="info-group">
+              <div class="info-label">Técnico Responsável</div>
+              <div id="sheet-os-tecnico" class="info-value">--</div>
+            </div>
+          </div>
+
+          <div class="info-group">
+            <div class="info-label">Descrição do Problema</div>
+            <div id="sheet-os-descricao" class="info-value" style="background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5;">
+              --
+            </div>
+          </div>
+
+          <!-- Section: Materiais Adicionados -->
+          <div class="materials-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div class="info-label" style="margin-bottom: 0;">Materiais & Custos</div>
+              <button type="button" id="btn-adicionar-material-trigger" class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px; width: auto;" onclick="abrirAdicionarMaterial()">
+                <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Adicionar Material
+              </button>
+            </div>
+            <div id="sheet-materials-container">
+              <!-- Rendered list of materials -->
+            </div>
+            <div id="sheet-total-custo" style="display: flex; justify-content: space-between; padding: 12px 14px; background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-sm); margin-top: 10px; font-weight: 700; font-size: 14px;">
+              <span>Custo Total de Materiais:</span>
+              <span id="sheet-total-custo-valor" style="color: var(--status-finalizada);">R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Ações contextuais de Status -->
+          <div id="sheet-actions" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Coluna Direita: Chat em Tempo Real -->
+        <div>
+          <div class="info-label" style="margin-bottom: 8px;">Mensagens & Histórico</div>
+          <div class="chat-container-panel">
+            <div class="chat-header">
+              <i data-lucide="message-square" style="color: var(--brand-color); width: 18px; height: 18px;"></i>
+              <span style="font-size: 13px; font-weight: 700;">Chat Integrado</span>
+            </div>
+            
+            <div id="chat-messages-list" class="chat-messages">
+              <!-- Bubble messages rendered here -->
+            </div>
+
+            <!-- Upload Attachment Indicator Bar -->
+            <div id="chat-upload-bar" class="chat-attachment-bar" style="display: none;">
+              <span id="chat-upload-filename">Foto selecionada.png</span>
+              <span style="cursor: pointer; color: var(--status-cancelada);" onclick="cancelarAnexoChat()">&times;</span>
+            </div>
+            
+            <form id="form-chat-send" onsubmit="enviarMensagemChat(event)" class="chat-input-area">
+              <div class="chat-input-wrapper">
+                <input type="text" id="chat-input-text" class="chat-text-input" placeholder="Escreva uma mensagem...">
+                <button type="button" class="chat-attach-btn" onclick="document.getElementById('chat-file-input').click()">
+                  <i data-lucide="paperclip"></i>
+                </button>
+                <input type="file" id="chat-file-input" style="display: none;" accept="image/*,video/*" onchange="selecionarAnexoChat(event)">
+              </div>
+              <button type="submit" class="chat-send-btn">
+                <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRINT/PDF REPORT TEMPLATE ================= -->
+  <div class="print-report" id="print-report">
+    <div class="print-header" style="align-items: center;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="logo.jpg" alt="Logo Rede Mega" style="height: 48px; width: auto; border-radius: 4px;">
+        <div>
+          <div class="print-logo-text">OS-REDE MEGA</div>
+          <p style="font-size: 10pt; color: #555; font-weight: 600; margin-top: 4px;">RELATÓRIO TÉCNICO DE ORDEM DE SERVIÇO</p>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 14pt; font-weight: 800; text-align: right;" id="print-os-id">OS-1001</div>
+        <p style="font-size: 9pt; color: #555; text-align: right;" id="print-data-emissao">Emissão: 15/06/2026</p>
+      </div>
+    </div>
+
+    <div class="print-meta-grid">
+      <div class="print-meta-item">
+        <div class="print-label">Título da Solicitação</div>
+        <div class="print-value" id="print-titulo">Monitor piscando no caixa administrativo</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Unidade / Loja</div>
+        <div class="print-value" id="print-loja">Loja Shopping</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Equipamento / Categoria</div>
+        <div class="print-value" id="print-equipamento">Monitor</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Prioridade</div>
+        <div class="print-value" id="print-prioridade">Média</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Aberto por</div>
+        <div class="print-value" id="print-criado-por">Usuário Carlos</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Técnico Responsável</div>
+        <div class="print-value" id="print-tecnico">Técnico Lucas</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Data de Abertura</div>
+        <div class="print-value" id="print-data-abertura">12/06/2026 14:32</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-label">Data de Finalização</div>
+        <div class="print-value" id="print-data-finalizacao">15/06/2026 15:00</div>
+      </div>
+    </div>
+
+    <div class="print-label" style="margin-bottom: 6px;">Descrição do Problema</div>
+    <div class="print-description" id="print-descricao">
+      Descrição detalhada da OS colocada pelo usuário solicitante.
+    </div>
+
+    <div class="print-label" style="margin-bottom: 10px;">Materiais e Componentes Aplicados</div>
+    <table class="print-table">
+      <thead>
+        <tr>
+          <th>Material</th>
+          <th style="width: 15%; text-align: center;">Qtd</th>
+          <th style="width: 20%; text-align: right;">Vlr Unitário</th>
+          <th style="width: 20%; text-align: right;">Vlr Total</th>
+        </tr>
+      </thead>
+      <tbody id="print-materials-rows">
+        <!-- Populated via script -->
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" style="text-align: right; font-weight: 700; border: none; padding-top: 15px;">VALOR TOTAL DA OS:</td>
+          <td style="text-align: right; font-weight: 700; border: none; padding-top: 15px; font-size: 12pt; color: #000;" id="print-valor-total">R$ 0,00</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="print-footer">
+      <div class="print-signatures">
+        <div class="signature-line" id="print-signature-tecnico">Técnico Lucas Nunes<br>Assinatura do Técnico</div>
+        <div class="signature-line">Assinatura de Recebimento da Loja</div>
+      </div>
+      <div>
+        <div class="print-label" style="text-align: center; margin-bottom: 6px;">QR Code de Autenticidade</div>
+        <div id="print-qrcode" class="print-qrcode">
+          <!-- QR Code Canvas will draw here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Recuperação de Senha -->
+  <div id="modal-recuperar-senha" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Solicitar Nova Senha</h3>
+        <button class="modal-close-btn" onclick="fecharModal('modal-recuperar-senha')">&times;</button>
+      </div>
+      <form id="form-recuperar-senha" onsubmit="solicitarNovaSenha(event)">
+        <div class="modal-body">
+          <div id="recovery-alert" class="login-alert danger" style="display: none;"></div>
+          <div class="form-group">
+            <label for="recovery-nome">Nome Completo *</label>
+            <input type="text" id="recovery-nome" class="input-control" required placeholder="Digite seu nome completo">
+          </div>
+          <div class="form-group">
+            <label for="recovery-usuario">Usuário ou Matrícula *</label>
+            <input type="text" id="recovery-usuario" class="input-control" required placeholder="Matrícula, e-mail ou nome de usuário">
+          </div>
+          <div class="form-group">
+            <label for="recovery-setor">Setor *</label>
+            <input type="text" id="recovery-setor" class="input-control" required placeholder="Ex: Almoxarifado, Frente de Caixa">
+          </div>
+          <div class="form-group">
+            <label for="recovery-observacao">Observação (Opcional)</label>
+            <textarea id="recovery-observacao" class="input-control" rows="3" placeholder="Insira alguma observação se necessário..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-recuperar-senha')">Cancelar</button>
+          <button type="submit" class="btn">Solicitar Nova Senha</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Alteração Obrigatória de Senha -->
+  <div id="modal-alterar-senha-obrigatorio" class="modal-overlay" style="z-index: 10000;">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>Alteração Obrigatória de Senha</h3>
+      </div>
+      <form id="form-alterar-senha-obrigatorio" onsubmit="confirmarAlterarSenhaObrigatoria(event)">
+        <input type="hidden" id="change-pwd-user-id">
+        <input type="hidden" id="change-pwd-reset-req-id">
+        <div class="modal-body">
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Você fez login usando uma senha temporária. É obrigatório cadastrar uma nova senha definitiva para prosseguir.
+          </p>
+          <div id="change-alert" class="login-alert danger" style="display: none;"></div>
+          
+          <div class="form-group">
+            <label for="change-password">Nova Senha *</label>
+            <div style="position: relative;">
+              <input type="password" id="change-password" class="input-control" required placeholder="Digite sua nova senha" oninput="validarForcaSenha(this.value)">
+              <button type="button" class="btn-toggle-password" onclick="toggleSenhaVisualizacao('change-password')">
+                <i data-lucide="eye" id="icon-eye-change-password"></i>
+              </button>
+            </div>
+            <!-- Password Strength Indicator Checklist -->
+            <ul class="pwd-requirements" style="margin-top: 10px; font-size: 11px; list-style: none; padding-left: 0; color: var(--text-muted);">
+              <li id="req-length" style="display: flex; align-items: center; gap: 6px;"><i data-lucide="x" style="width:12px;height:12px;color:var(--status-cancelada);"></i> Mínimo de 8 caracteres</li>
+              <li id="req-upper" style="display: flex; align-items: center; gap: 6px;"><i data-lucide="x" style="width:12px;height:12px;color:var(--status-cancelada);"></i> Pelo menos uma letra maiúscula</li>
+              <li id="req-lower" style="display: flex; align-items: center; gap: 6px;"><i data-lucide="x" style="width:12px;height:12px;color:var(--status-cancelada);"></i> Pelo menos uma letra minúscula</li>
+              <li id="req-number" style="display: flex; align-items: center; gap: 6px;"><i data-lucide="x" style="width:12px;height:12px;color:var(--status-cancelada);"></i> Pelo menos um número</li>
+              <li id="req-special" style="display: flex; align-items: center; gap: 6px;"><i data-lucide="x" style="width:12px;height:12px;color:var(--status-cancelada);"></i> Pelo menos um caractere especial</li>
+            </ul>
+          </div>
+          
+          <div class="form-group">
+            <label for="change-password-confirm">Confirmar Nova Senha *</label>
+            <div style="position: relative;">
+              <input type="password" id="change-password-confirm" class="input-control" required placeholder="Confirme sua nova senha">
+              <button type="button" class="btn-toggle-password" onclick="toggleSenhaVisualizacao('change-password-confirm')">
+                <i data-lucide="eye" id="icon-eye-change-password-confirm"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn">Alterar Senha e Acessar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Visualizador de Imagem (Lightbox) -->
+  <div id="modal-visualizador-imagem" class="modal-overlay" onclick="fecharModal('modal-visualizador-imagem')" style="z-index: 999999; background: rgba(0, 0, 0, 0.9);">
+    <div style="position: relative; max-width: 90%; max-height: 90%; display: flex; align-items: center; justify-content: center; margin: auto;" onclick="event.stopPropagation()">
+      <span onclick="fecharModal('modal-visualizador-imagem')" style="position: absolute; top: -50px; right: 10px; color: white; font-size: 40px; cursor: pointer; font-weight: bold; user-select: none;">&times;</span>
+      <img id="img-visualizador" src="" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    </div>
+  </div>
+
+  <!-- DB and JS files -->
+  <script src="db.js?v=39"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="app.js?v=79"></script>
+</body>
+</html>

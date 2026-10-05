@@ -1,0 +1,436 @@
+Parte 2
+
+Perfeito ✅
+
+Agora vou te entregar o **CHECKLIST COMPLETO DE IMPLEMENTAÇÃO NO FLUTTERFLOW**, organizado na ordem correta para você montar tudo sem quebrar nada.
+
+Esse é o roteiro profissional de construção do seu app interno.
+
+---
+
+# 🏗 ORDEM CORRETA DE IMPLEMENTAÇÃO NO FLUTTERFLOW
+
+---
+
+# 🔹 ETAPA 1 — CONFIGURAÇÃO BASE
+
+### ✅ 1. Conectar Firebase
+
+* Authentication (Email + senha)
+* Firestore
+* Storage
+* Cloud Messaging
+
+---
+
+### ✅ 2. Criar Collections no FlutterFlow (igual Firestore)
+
+Criar exatamente:
+
+```
+users
+lojas
+os
+estoque
+movimentacoes_estoque
+notificacoes
+logs
+```
+
+Criar Subcollection:
+
+```
+os → materiais
+```
+
+---
+
+# 🔹 ETAPA 2 — AUTENTICAÇÃO E CONTROLE DE PERFIL
+
+---
+
+### ✅ 3. Tela Login
+
+* Email
+* Senha
+* Botão Login
+
+Action:
+→ Sign In
+
+---
+
+### ✅ 4. Criar campo role no user
+
+Na coleção users:
+
+```
+role (string)
+```
+
+Valores:
+
+* admin
+* diretor
+* ti
+* usuario
+
+---
+
+### ✅ 5. Criar redirecionamento por role
+
+No App Start:
+
+If currentUser.role == "diretor"
+→ Dashboard Diretor
+
+If "ti"
+→ Dashboard TI
+
+If "usuario"
+→ Dashboard Usuário
+
+If "admin"
+→ Dashboard Admin
+
+---
+
+# 🔹 ETAPA 3 — TELAS PRINCIPAIS
+
+---
+
+# 🧑‍🔧 DASHBOARD TI
+
+Criar:
+
+### 🔹 Lista Minhas OS
+
+Filtro:
+
+```
+tecnico_responsavel == currentUserReference
+```
+
+### 🔹 Botão: Criar OS
+
+Campos:
+
+* Loja (dropdown)
+* Descrição
+
+Action:
+→ Create Document em os
+
+---
+
+# 👔 DASHBOARD DIRETOR
+
+Criar Cards:
+
+* OS Aguardando Aprovação
+* OS Em Andamento
+* OS Finalizadas Mês
+* Estoque Baixo
+
+Filtros:
+
+```
+status == "Aguardando Aprovação"
+```
+
+```
+status == "Finalizada"
+```
+
+---
+
+# 👤 DASHBOARD USUÁRIO
+
+Lista:
+
+```
+criado_por == currentUserReference
+```
+
+Botão:
+"Baixar Relatório"
+
+---
+
+# 🔹 ETAPA 4 — MATERIAIS NA OS
+
+---
+
+## Tela Detalhes OS (TI)
+
+### ✅ Botão "Adicionar Material"
+
+Form:
+
+* Nome material
+* Quantidade
+* Valor unitário
+
+Action:
+
+1️⃣ Create Document → os/{osId}/materiais
+2️⃣ Calcular valor_total = quantidade × valor_unitario
+3️⃣ Update OS:
+
+```
+status = Aguardando Aprovação de Material
+```
+
+---
+
+# 🔹 ETAPA 5 — APROVAÇÃO DIRETOR
+
+Tela:
+Lista OS com status:
+
+```
+Aguardando Aprovação de Material
+```
+
+Botões:
+
+🟢 Aprovar
+🔴 Rejeitar
+
+---
+
+## Aprovar Action:
+
+Update OS:
+
+```
+material_aprovado = true
+status = Em andamento
+data_aprovacao = current time
+aprovado_por = currentUserReference
+```
+
+---
+
+## Rejeitar Action:
+
+BottomSheet com motivo obrigatório
+
+Update OS:
+
+```
+material_aprovado = false
+status = Rejeitada por Diretor
+motivo_rejeicao = texto
+```
+
+---
+
+# 🔹 ETAPA 6 — CONTROLE DE ESTOQUE
+
+---
+
+## Criar Tela Estoque
+
+Listar:
+
+```
+estoque
+```
+
+Campos:
+
+* nome_material
+* quantidade_atual
+* estoque_minimo
+
+---
+
+## Lógica na Aprovação
+
+Quando aprovar OS:
+
+Para cada material:
+
+→ Update estoque
+
+```
+quantidade_atual - quantidade usada
+```
+
+→ Create movimentacoes_estoque
+tipo = saida
+
+---
+
+# 🔹 ETAPA 7 — FINALIZAÇÃO DA OS
+
+---
+
+Botão visível se:
+
+```
+status == Em andamento
+AND
+currentUser.role == ti
+```
+
+---
+
+Ao clicar:
+
+1️⃣ Update:
+
+```
+status = Finalizada
+finalizada_em = current time
+finalizada_por = currentUserReference
+```
+
+2️⃣ Chamar Custom Action:
+
+* Gerar PDF
+* Gerar QR
+* Upload Storage
+* Salvar relatorio_url
+
+---
+
+# 🔹 ETAPA 8 — RELATÓRIO E DOWNLOAD
+
+Na tela de detalhes:
+
+Se status == Finalizada:
+
+Mostrar botão:
+
+```
+Baixar Relatório
+```
+
+Action:
+→ Launch URL → relatorio_url
+
+---
+
+# 🔹 ETAPA 9 — NOTIFICAÇÕES
+
+---
+
+### Criar Tela Central de Notificações
+
+Query:
+
+```
+user_id == currentUserReference
+```
+
+Botão:
+"Marcar como lida"
+
+---
+
+Cloud Functions já enviam Push.
+Aqui você apenas salva também na collection notificacoes.
+
+---
+
+# 🔹 ETAPA 10 — LOGS AUTOMÁTICOS
+
+Em toda mudança importante:
+
+Create Document → logs
+
+Exemplo:
+
+```
+acao: "OS Finalizada"
+feito_por: currentUserReference
+os_id: referência
+data: current time
+```
+
+---
+
+# 🔹 ETAPA 11 — DASHBOARD FINANCEIRO
+
+Criar:
+
+### Total Gasto Mês
+
+Query:
+
+```
+status == Finalizada
+```
+
+Somar:
+
+```
+custo_total_materiais
+```
+
+Exibir em Card.
+
+---
+
+# 🔹 ETAPA 12 — PERMISSÕES VISUAIS
+
+Em TODOS botões importantes:
+
+Usar Visibility Conditions:
+
+```
+currentUser.role == diretor
+```
+
+```
+currentUser.role == ti
+```
+
+```
+currentUser.role == usuario
+```
+
+---
+
+# 🏁 CHECKLIST FINAL
+
+Antes de publicar, conferir:
+
+✔ Login funcionando
+✔ Redirecionamento por role
+✔ Criar OS funcionando
+✔ Adicionar material funcionando
+✔ Aprovação funcionando
+✔ Baixa de estoque funcionando
+✔ Finalização gerando PDF
+✔ QR abrindo página
+✔ Download funcionando
+✔ Notificações funcionando
+✔ Dashboard mostrando dados corretos
+
+---
+
+# 🚀 RESULTADO
+
+Você terá um:
+
+Sistema interno completo de gestão técnica
+Controle financeiro por loja
+Controle de estoque integrado
+Relatórios profissionais
+QR inteligente
+Notificações automáticas
+Dashboard gerencial
+
+---
+
+Se você quiser, próximo passo posso montar:
+
+📐 Fluxograma visual completo do app
+📊 Modelo de layout ideal para cada dashboard
+🧠 Estratégia de performance e otimização Firestore
+📱 Estrutura visual moderna pronta para copiar
+
+Qual próximo nível você quer agora?
