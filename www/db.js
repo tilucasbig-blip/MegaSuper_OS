@@ -455,21 +455,10 @@ const AppDatabase = {
 
   // Inicializador padrão
   init() {
-    this.loadLocalCache();
-    if (!this.cache.users) this.cache.users = [];
-    
-    // Mescla os usuários de fallback padrões garantindo que diretor, técnico, kinhas e adagalmir existam
-    MOCK_USERS_FALLBACK.forEach(mockU => {
-      const mockUid = mockU.id;
-      const exists = this.cache.users.some(u => 
-        String(u.id || u.uid) === String(mockUid) || 
-        (u.usuario && u.usuario.toLowerCase() === mockU.usuario.toLowerCase()) || 
-        (u.email && u.email.toLowerCase() === mockU.email.toLowerCase())
-      );
-      if (!exists) {
-        this.cache.users.push({ ...mockU, uid: mockU.id });
-      }
-    });
+    // Se o cache de usuários estiver completamente vazio (primeira execução sem rede), carrega os usuários padrão
+    if (this.cache.users.length === 0) {
+      this.cache.users = MOCK_USERS_FALLBACK.map(u => ({ ...u, uid: u.id }));
+    }
     if (!this.cache.lojas || this.cache.lojas.length === 0) {
       this.cache.lojas = MOCK_LOJAS_FALLBACK;
     }
@@ -914,17 +903,20 @@ const AppDatabase = {
 
   async persistDelete(collectionName, id, idField = "id") {
     try {
-      const queryField = (collectionName === "users" && idField === "uid") ? "id" : idField;
-      const { error } = await supabaseClient
+      const queryField = (collectionName === "users") ? "id" : idField;
+      const { data, error } = await supabaseClient
         .from(collectionName)
         .delete()
-        .eq(queryField, id);
+        .eq(queryField, id)
+        .select();
 
       if (error) {
         console.error(`Erro ao deletar no Supabase para ${collectionName}:`, error);
+      } else {
+        console.log(`Deletado com sucesso do Supabase (${collectionName}):`, data);
       }
     } catch (err) {
-      console.error(err);
+      console.error(`Exceção em persistDelete (${collectionName}):`, err);
     }
   }
 };

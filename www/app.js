@@ -1621,12 +1621,13 @@ function renderTabelaUsuariosHTML(users) {
                 currentUser.role === 'diretor' || 
                 (currentUser.role === 'ti' && u.role === 'usuario')
               ) {
+                const targetUserId = u.uid || u.id;
                 acaoHTML = `
                   <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" style="width: auto; padding: 6px 12px; color: var(--accent-color); border-color: rgba(99, 102, 241, 0.2);" onclick="abrirEditarUsuario('${u.uid}')">
+                    <button class="btn btn-secondary" style="width: auto; padding: 6px 12px; color: var(--accent-color); border-color: rgba(99, 102, 241, 0.2);" onclick="abrirEditarUsuario('${targetUserId}')">
                       <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i> Editar
                     </button>
-                    <button class="btn btn-secondary" style="width: auto; padding: 6px 12px; color: var(--status-cancelada); border-color: rgba(239, 68, 68, 0.2);" onclick="excluirUsuarioSimulado('${u.uid}')">
+                    <button class="btn btn-secondary" style="width: auto; padding: 6px 12px; color: var(--status-cancelada); border-color: rgba(239, 68, 68, 0.2);" onclick="excluirUsuarioSimulado('${targetUserId}')">
                       <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Excluir
                     </button>
                   </div>
@@ -2779,22 +2780,28 @@ function excluirUsuarioSimulado(uid) {
   const user = AppDatabase.getDoc("users", uid, "uid") || AppDatabase.getDoc("users", uid, "id");
   if (!user) return;
   
+  const targetId = user.id || user.uid || uid;
+  const currentId = currentUser ? (currentUser.id || currentUser.uid) : null;
+  if (currentId && (targetId === currentId || user.usuario === currentUser.usuario)) {
+    alert("Erro: Você não pode excluir sua própria conta de usuário logada.");
+    return;
+  }
+
   if (currentUser && currentUser.role === 'ti' && user.role !== 'usuario') {
     alert("Erro: Técnicos de TI só podem remover Funcionários Comum.");
     return;
   }
   
-  const confirmacao = confirm(`Deseja realmente excluir o usuário ${user.nome} do sistema?`);
+  const confirmacao = confirm(`Deseja realmente excluir o usuário ${user.nome} (@${user.usuario}) do sistema?`);
   if (!confirmacao) return;
   
-  const targetId = user.uid || user.id;
   AppDatabase.deleteDoc("users", targetId);
   if (currentUser) {
-    AppDatabase.registrarLog(`Excluiu usuário: ${user.nome}`, currentUser.uid || currentUser.id);
+    AppDatabase.registrarLog(`Excluiu usuário: ${user.nome} (@${user.usuario})`, currentUser.uid || currentUser.id);
   }
   
   alert(`Usuário ${user.nome} excluído com sucesso!`);
-  navegarPara("usuarios");
+  renderUsuarios();
 }
 
 function abrirEditarUsuario(uid) {
