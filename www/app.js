@@ -1809,6 +1809,11 @@ function abrirModal(id) {
     
     if (id === 'modal-criar-equipamento') {
       popularLojasDropdown();
+      popularTiposEquipamentosDropdown("eq-tipo", "Computador/PC");
+      aoMudarTipoEquipamentoForm("Computador/PC", "eq-");
+      const lojaEl = document.getElementById("eq-loja");
+      if (lojaEl && lojaEl.value) aoMudarLojaEquipamento(lojaEl.value, "eq-");
+      marcarStatusRadio("eq-status", "ativo");
     }
     
     if (id === 'modal-criar-os') {
@@ -4048,64 +4053,672 @@ function renderEquipamentos() {
   lucide.createIcons();
 }
 
+// ================= MOTOR DINÂMICO DE CADASTRO E GESTÃO DE EQUIPAMENTOS =================
+
+function popularTiposEquipamentosDropdown(selectId, selectedValue = "") {
+  const selectEl = document.getElementById(selectId);
+  if (!selectEl) return;
+
+  const grupos = {
+    "Informática & Computadores": ["Computador/PC", "Notebook", "Servidor", "Monitor", "Monitor touch", "Teclado", "Mouse", "Tablet", "Celular corporativo"],
+    "Impressão & Digitalização": ["Impressora", "Impressora laser", "Impressora térmica", "Impressora multifuncional", "Impressora fiscal", "Impressora não fiscal", "Scanner", "Etiquetadora", "Leitor de documentos"],
+    "Frente de Caixa & Automação (PDV)": ["PDV/CPU", "Balança de checkout", "Balança", "Pin Pad", "TEF", "Gaveta de dinheiro", "Display de cliente", "SAT/MFE", "Caixa reserva", "PDV reserva", "Terminal de consulta", "Leitor de código de barras", "Coletor de dados"],
+    "CFTV & Segurança Eletrônica": ["DVR", "NVR", "Câmeras IP", "Câmeras analógicas", "Câmeras dome", "Câmeras bullet", "Computador de monitoramento", "HD para DVR/NVR"],
+    "Rede & Infraestrutura": ["Roteador", "Switch", "Switch PoE", "Access point", "Rack", "Patch panel", "Conversor de mídia", "Cabos de rede", "Cabos coaxiais", "Baluns", "Conectores BNC"],
+    "Alarmes & Controle de Acesso": ["Central de alarme", "Teclado de alarme", "Sensores", "Sirene", "Módulo de comunicação", "Controle remoto", "Cerca elétrica", "Leitor biométrico", "Leitor de cartão/proximidade", "Token/leitora", "Interfone/porteiro eletrônico"],
+    "RH & Ponto": ["Relógio de ponto", "Tablet de Ponto"],
+    "Energia & Proteção": ["Nobreak", "Estabilizador", "Fonte 12V"],
+    "Apresentação & Áudio": ["TV/monitor", "Projetor", "Caixa de som", "Webcam", "Headset", "Telefone", "Ramal", "Equipamentos para videoconferência"]
+  };
+
+  let html = `<option value="" disabled selected>-- Selecione o Tipo de Equipamento --</option>`;
+  const addedIds = new Set();
+
+  for (const [grupoNome, ids] of Object.entries(grupos)) {
+    html += `<optgroup label="${grupoNome}">`;
+    ids.forEach(id => {
+      const item = LISTA_TIPOS_EQUIPAMENTOS.find(t => t.id === id) || { id, nome: id };
+      addedIds.add(item.id);
+      const sel = (String(selectedValue || "").toLowerCase() === String(item.id).toLowerCase()) ? 'selected' : '';
+      html += `<option value="${item.id}" ${sel}>${item.nome}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+
+  // Itens restantes
+  const restantes = LISTA_TIPOS_EQUIPAMENTOS.filter(t => !addedIds.has(t.id));
+  if (restantes.length > 0) {
+    html += `<optgroup label="Outros Equipamentos">`;
+    restantes.forEach(item => {
+      const sel = (String(selectedValue || "").toLowerCase() === String(item.id).toLowerCase()) ? 'selected' : '';
+      html += `<option value="${item.id}" ${sel}>${item.nome}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+
+  selectEl.innerHTML = html;
+}
+
+function getPrefixoPorTipoEquipamento(tipo) {
+  const t = (tipo || "").toLowerCase();
+  if (t.includes("notebook")) return "NOTE";
+  if (t.includes("servidor")) return "SRV";
+  if (t.includes("computador") || t.includes("pc")) return "COMP";
+  if (t.includes("pdv") || t.includes("checkout") || t.includes("caixa")) return "PDV";
+  if (t.includes("impressora") || t.includes("etiquetadora")) return "IMP";
+  if (t.includes("balança") || t.includes("balanca")) return "BAL";
+  if (t.includes("dvr")) return "DVR";
+  if (t.includes("nvr")) return "NVR";
+  if (t.includes("câmera") || t.includes("camera") || t.includes("camip")) return "CAMIP";
+  if (t.includes("switch") || t.includes("roteador") || t.includes("router") || t.includes("access point") || t.includes("rack") || t.includes("patch panel")) return "REDE";
+  if (t.includes("alarme") || t.includes("cerca") || t.includes("sensor") || t.includes("sirene")) return "ALM";
+  if (t.includes("tablet")) return "TAB";
+  if (t.includes("ponto") || t.includes("relogio")) return "REP";
+  if (t.includes("nobreak") || t.includes("estabilizador") || t.includes("fonte")) return "PWR";
+  if (t.includes("leitor") || t.includes("coletor")) return "LEIT";
+  if (t.includes("pin pad") || t.includes("tef")) return "TEF";
+  if (t.includes("monitor") || t.includes("tv")) return "MON";
+  return "EQUIP";
+}
+
+function gerarProximoCodigoEquipamento(tipo) {
+  const prefix = getPrefixoPorTipoEquipamento(tipo);
+  const equipamentos = AppDatabase.getCollection("equipamentos") || [];
+  
+  let maxSeq = 0;
+  const regex = new RegExp(`^${prefix}-(\\d+)$`, "i");
+  
+  equipamentos.forEach(eq => {
+    const codes = [eq.id, eq.codigo_patrimonio, eq.codigo_equipamento].filter(Boolean);
+    codes.forEach(c => {
+      const match = String(c).match(regex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxSeq) maxSeq = num;
+      }
+    });
+  });
+  
+  const nextNum = maxSeq + 1;
+  const padNum = String(nextNum).padStart(4, '0');
+  return `${prefix}-${padNum}`;
+}
+
+function aoMudarTipoEquipamentoForm(tipo, prefixo = "eq-") {
+  const codigoEl = document.getElementById(`${prefixo}codigo`);
+  const patrimonioEl = document.getElementById(`${prefixo}patrimonio`);
+  
+  // Atualiza código sequencial automático apenas na criação
+  if (prefixo === "eq-" && codigoEl) {
+    const nextCode = gerarProximoCodigoEquipamento(tipo);
+    codigoEl.value = nextCode;
+    if (patrimonioEl && (!patrimonioEl.value || patrimonioEl.value.match(/^[A-Z]+-\d{4}$/))) {
+      patrimonioEl.value = nextCode;
+    }
+  }
+
+  // Renderiza a seção técnica dinâmica correspondente
+  renderCamposTecnicosDinamicos(tipo, prefixo);
+}
+
+function renderCamposTecnicosDinamicos(tipo, prefixo = "eq-", specsSalvas = {}) {
+  const container = document.getElementById(`${prefixo}secao-tecnica-dinamica`);
+  if (!container) return;
+
+  const t = (tipo || "").toLowerCase();
+  let html = "";
+
+  if (t.includes("computador") || t.includes("notebook") || t.includes("pc") || t.includes("servidor") || t.includes("pdv/cpu") || t.includes("monitoramento")) {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="cpu" style="width: 16px; height: 16px;"></i> Especificações de Hardware (Computador / Servidor / PDV)
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}proc">Processador (Fabricante & Modelo)</label>
+            <input type="text" id="${prefixo}proc" class="input-control" placeholder="Ex: Intel Core i5-10400 / AMD Ryzen 5 5600G" value="${specsSalvas.processador || ''}">
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}ram">Memória RAM (GB)</label>
+            <select id="${prefixo}ram" class="input-control">
+              <option value="4 GB" ${specsSalvas.ram_gb === '4 GB' ? 'selected' : ''}>4 GB</option>
+              <option value="8 GB" ${specsSalvas.ram_gb === '8 GB' || !specsSalvas.ram_gb ? 'selected' : ''}>8 GB</option>
+              <option value="16 GB" ${specsSalvas.ram_gb === '16 GB' ? 'selected' : ''}>16 GB</option>
+              <option value="32 GB" ${specsSalvas.ram_gb === '32 GB' ? 'selected' : ''}>32 GB</option>
+              <option value="64 GB" ${specsSalvas.ram_gb === '64 GB' ? 'selected' : ''}>64 GB</option>
+              <option value="128 GB" ${specsSalvas.ram_gb === '128 GB' ? 'selected' : ''}>128 GB</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Unidades de Armazenamento (SSD / HD)</span>
+            <button type="button" class="btn btn-secondary" style="width: auto; padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" onclick="adicionarLinhaDisco('${prefixo}')">
+              <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Adicionar Disco
+            </button>
+          </label>
+          <div id="${prefixo}discos-container">
+            <!-- Disks rows -->
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}so">Sistema Operacional</label>
+            <input type="text" id="${prefixo}so" class="input-control" placeholder="Ex: Windows 10 Pro / Windows 11 / Linux Ubuntu" list="datalist-so" value="${specsSalvas.sistema_operacional || 'Windows 10 Pro'}">
+            <datalist id="datalist-so">
+              <option value="Windows 10 Pro"></option>
+              <option value="Windows 11 Pro"></option>
+              <option value="Windows 10 IoT Enterprise"></option>
+              <option value="Windows Server 2022"></option>
+              <option value="Windows Server 2019"></option>
+              <option value="Linux Ubuntu 22.04 LTS"></option>
+              <option value="Linux Debian"></option>
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}arq">Arquitetura do Sistema</label>
+            <select id="${prefixo}arq" class="input-control">
+              <option value="64-bit" ${specsSalvas.arquitetura !== '32-bit' ? 'selected' : ''}>64-bit (x64)</option>
+              <option value="32-bit" ${specsSalvas.arquitetura === '32-bit' ? 'selected' : ''}>32-bit (x86)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (t.includes("impressora") || t.includes("etiquetadora")) {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="printer" style="width: 16px; height: 16px;"></i> Especificações de Impressão
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}imp-tec">Tecnologia de Impressão</label>
+            <select id="${prefixo}imp-tec" class="input-control">
+              <option value="Laser" ${specsSalvas.impressora_tecnologia === 'Laser' ? 'selected' : ''}>Laser</option>
+              <option value="Térmica Direta" ${specsSalvas.impressora_tecnologia === 'Térmica Direta' ? 'selected' : ''}>Térmica Direta (Cupom/NFC-e)</option>
+              <option value="Transferência Térmica" ${specsSalvas.impressora_tecnologia === 'Transferência Térmica' ? 'selected' : ''}>Transferência Térmica (Etiquetas)</option>
+              <option value="Jato de Tinta / Tanque" ${specsSalvas.impressora_tecnologia === 'Jato de Tinta / Tanque' ? 'selected' : ''}>Jato de Tinta / Tanque</option>
+              <option value="Matricial" ${specsSalvas.impressora_tecnologia === 'Matricial' ? 'selected' : ''}>Matricial</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}imp-tipo">Tipo de Impressão</label>
+            <select id="${prefixo}imp-tipo" class="input-control">
+              <option value="Monocromática (Preto e Branco)" ${specsSalvas.impressora_tipo !== 'Colorida' ? 'selected' : ''}>Monocromática (P&B)</option>
+              <option value="Colorida" ${specsSalvas.impressora_tipo === 'Colorida' ? 'selected' : ''}>Colorida</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}imp-conexao">Tipo de Conexão</label>
+            <select id="${prefixo}imp-conexao" class="input-control">
+              <option value="USB" ${specsSalvas.impressora_conexao === 'USB' ? 'selected' : ''}>USB</option>
+              <option value="Rede Ethernet (RJ45)" ${specsSalvas.impressora_conexao === 'Rede Ethernet (RJ45)' ? 'selected' : ''}>Rede Ethernet (RJ45)</option>
+              <option value="Wi-Fi / Sem Fio" ${specsSalvas.impressora_conexao === 'Wi-Fi / Sem Fio' ? 'selected' : ''}>Wi-Fi / Sem Fio</option>
+              <option value="Serial RS232" ${specsSalvas.impressora_conexao === 'Serial RS232' ? 'selected' : ''}>Serial RS232</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}imp-sup">Modelo do Suprimento / Toner / Bobina</label>
+            <input type="text" id="${prefixo}imp-sup" class="input-control" placeholder="Ex: Toner HP 85A / Bobina Térmica 80mm" value="${specsSalvas.impressora_suprimento || ''}">
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (t.includes("balança") || t.includes("balanca")) {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="scale" style="width: 16px; height: 16px;"></i> Especificações de Pesagem e Balança
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}bal-cap">Capacidade Máxima de Pesagem</label>
+            <input type="text" id="${prefixo}bal-cap" class="input-control" placeholder="Ex: 15 kg / 30 kg / 300 kg" value="${specsSalvas.balanca_capacidade || '15 kg'}">
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}bal-prec">Precisão / Divisão</label>
+            <input type="text" id="${prefixo}bal-prec" class="input-control" placeholder="Ex: 2g até 6kg / 5g até 15kg" value="${specsSalvas.balanca_precisao || '2g / 5g'}">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}bal-interface">Interface de Comunicação</label>
+            <select id="${prefixo}bal-interface" class="input-control">
+              <option value="Serial RS232" ${specsSalvas.balanca_interface === 'Serial RS232' ? 'selected' : ''}>Serial RS232</option>
+              <option value="Ethernet / TCP-IP" ${specsSalvas.balanca_interface === 'Ethernet / TCP-IP' ? 'selected' : ''}>Ethernet / TCP-IP</option>
+              <option value="USB" ${specsSalvas.balanca_interface === 'USB' ? 'selected' : ''}>USB</option>
+              <option value="Wi-Fi" ${specsSalvas.balanca_interface === 'Wi-Fi' ? 'selected' : ''}>Wi-Fi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}bal-protocolo">Protocolo / Versão do Firmware</label>
+            <input type="text" id="${prefixo}bal-protocolo" class="input-control" placeholder="Ex: Toledo Prix 3 / Filizola / Urano" value="${specsSalvas.balanca_protocolo || ''}">
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (t.includes("dvr") || t.includes("nvr")) {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="video" style="width: 16px; height: 16px;"></i> Especificações de Gravador de Vídeo (DVR / NVR)
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}dvr-canais">Quantidade de Canais</label>
+            <select id="${prefixo}dvr-canais" class="input-control">
+              <option value="4 Canais" ${specsSalvas.dvr_canais === '4 Canais' ? 'selected' : ''}>4 Canais</option>
+              <option value="8 Canais" ${specsSalvas.dvr_canais === '8 Canais' ? 'selected' : ''}>8 Canais</option>
+              <option value="16 Canais" ${specsSalvas.dvr_canais === '16 Canais' || !specsSalvas.dvr_canais ? 'selected' : ''}>16 Canais</option>
+              <option value="32 Canais" ${specsSalvas.dvr_canais === '32 Canais' ? 'selected' : ''}>32 Canais</option>
+              <option value="64 Canais" ${specsSalvas.dvr_canais === '64 Canais' ? 'selected' : ''}>64 Canais</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}dvr-discos">Quantidade e Capacidade de Discos (HDs)</label>
+            <input type="text" id="${prefixo}dvr-discos" class="input-control" placeholder="Ex: 2x 4TB Surveillance WD Purple" value="${specsSalvas.dvr_discos || ''}">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}dvr-porta">Porta de Acesso / Streaming</label>
+            <input type="text" id="${prefixo}dvr-porta" class="input-control" placeholder="Ex: 37777 / 8000 / 554" value="${specsSalvas.dvr_porta || '37777'}">
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}dvr-firmware">Versão do Firmware</label>
+            <input type="text" id="${prefixo}dvr-firmware" class="input-control" placeholder="Ex: V4.002.0000000.1" value="${specsSalvas.firmware_versao || ''}">
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (t.includes("câmera") || t.includes("camera") || t.includes("camip")) {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="camera" style="width: 16px; height: 16px;"></i> Especificações de Câmera de Segurança
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}cam-tec">Tecnologia da Câmera</label>
+            <select id="${prefixo}cam-tec" class="input-control">
+              <option value="IP / Onvif" ${specsSalvas.camera_tecnologia === 'IP / Onvif' ? 'selected' : ''}>Câmera IP (Onvif / PoE)</option>
+              <option value="Analógica HDCVI" ${specsSalvas.camera_tecnologia === 'Analógica HDCVI' ? 'selected' : ''}>Analógica HDCVI (Intelbras)</option>
+              <option value="Analógica AHD / HDTVI" ${specsSalvas.camera_tecnologia === 'Analógica AHD / HDTVI' ? 'selected' : ''}>Analógica AHD / HDTVI</option>
+              <option value="Wi-Fi Sem Fio" ${specsSalvas.camera_tecnologia === 'Wi-Fi Sem Fio' ? 'selected' : ''}>Wi-Fi Sem Fio (Mibo / Tuya)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}cam-res">Resolução</label>
+            <input type="text" id="${prefixo}cam-res" class="input-control" placeholder="Ex: Full HD 1080p (2MP) / 4MP / 4K" value="${specsSalvas.camera_resolucao || 'Full HD 1080p'}">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}cam-canal">Canal ou Identificador no DVR</label>
+            <input type="text" id="${prefixo}cam-canal" class="input-control" placeholder="Ex: Canal 05 / Entrada Principal" value="${specsSalvas.camera_canal || ''}">
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}cam-dvr">DVR / NVR Associado</label>
+            <input type="text" id="${prefixo}cam-dvr" class="input-control" placeholder="Ex: DVR-0001 (Sala de Monitoramento)" value="${specsSalvas.camera_dvr_vinculado || ''}">
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (t.includes("switch") || t.includes("roteador") || t.includes("access point") || t.includes("rack")) {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="network" style="width: 16px; height: 16px;"></i> Especificações de Rede e Infraestrutura
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}rede-portas">Quantidade de Portas</label>
+            <input type="text" id="${prefixo}rede-portas" class="input-control" placeholder="Ex: 8 portas / 24 portas Gigabit / 48 portas" value="${specsSalvas.rede_portas || '24 portas'}">
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}rede-poe">Suporte a PoE (Power over Ethernet)</label>
+            <select id="${prefixo}rede-poe" class="input-control">
+              <option value="Não" ${specsSalvas.rede_poe === 'Não' ? 'selected' : ''}>Não</option>
+              <option value="Sim (802.3af/at)" ${specsSalvas.rede_poe === 'Sim (802.3af/at)' ? 'selected' : ''}>Sim (802.3af/at)</option>
+              <option value="PoE Passthrough" ${specsSalvas.rede_poe === 'PoE Passthrough' ? 'selected' : ''}>PoE Passthrough</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="${prefixo}rede-rack">Rack / Localização Física</label>
+            <input type="text" id="${prefixo}rede-rack" class="input-control" placeholder="Ex: Rack Principal TI - Posição U12" value="${specsSalvas.rede_rack || ''}">
+          </div>
+          <div class="form-group">
+            <label for="${prefixo}rede-firmware">Versão do Firmware</label>
+            <input type="text" id="${prefixo}rede-firmware" class="input-control" placeholder="Ex: RouterOS 7.12 / UniFi OS" value="${specsSalvas.firmware_versao || ''}">
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    html = `
+      <div class="dynamic-specs-box">
+        <div style="font-weight: 700; color: #818cf8; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="info" style="width: 16px; height: 16px;"></i> Especificações Técnicas Gerais
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="${prefixo}geral-esp">Detalhes e Parâmetros Técnicos</label>
+          <input type="text" id="${prefixo}geral-esp" class="input-control" placeholder="Ex: Voltagem 220V, Potência 1500VA, Frequência 433MHz..." value="${specsSalvas.especificacao_geral || ''}">
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+
+  // Se tiver discos para computador/servidor
+  if (t.includes("computador") || t.includes("notebook") || t.includes("pc") || t.includes("servidor") || t.includes("pdv/cpu") || t.includes("monitoramento")) {
+    const discosContainer = document.getElementById(`${prefixo}discos-container`);
+    if (discosContainer) {
+      discosContainer.innerHTML = "";
+      const discos = Array.isArray(specsSalvas.armazenamento) && specsSalvas.armazenamento.length > 0
+        ? specsSalvas.armazenamento
+        : [{ tipo: "SSD", capacidade: "240 GB" }];
+      discos.forEach(d => adicionarLinhaDisco(prefixo, d.tipo || d.tipoDisco, d.capacidade));
+    }
+  }
+
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+}
+
+function adicionarLinhaDisco(prefixo, tipoDisco = "SSD", capacidade = "240 GB") {
+  const container = document.getElementById(`${prefixo}discos-container`);
+  if (!container) return;
+
+  const row = document.createElement("div");
+  row.className = "disk-row";
+  row.innerHTML = `
+    <select class="input-control disk-type" style="width: 140px; flex-shrink: 0;">
+      <option value="SSD SATA" ${tipoDisco === 'SSD SATA' || tipoDisco === 'SSD' ? 'selected' : ''}>SSD SATA</option>
+      <option value="SSD NVMe M.2" ${tipoDisco === 'SSD NVMe M.2' || tipoDisco === 'NVMe' ? 'selected' : ''}>SSD NVMe M.2</option>
+      <option value="HD Mecânico" ${tipoDisco === 'HD Mecânico' || tipoDisco === 'HD' ? 'selected' : ''}>HD Mecânico</option>
+      <option value="eMMC / Flash" ${tipoDisco === 'eMMC / Flash' ? 'selected' : ''}>eMMC / Flash</option>
+    </select>
+    <select class="input-control disk-cap" style="width: 140px; flex-shrink: 0;">
+      <option value="120 GB" ${capacidade === '120 GB' ? 'selected' : ''}>120 GB</option>
+      <option value="240 GB" ${capacidade === '240 GB' || !capacidade ? 'selected' : ''}>240 GB</option>
+      <option value="256 GB" ${capacidade === '256 GB' ? 'selected' : ''}>256 GB</option>
+      <option value="480 GB" ${capacidade === '480 GB' ? 'selected' : ''}>480 GB</option>
+      <option value="500 GB" ${capacidade === '500 GB' ? 'selected' : ''}>500 GB</option>
+      <option value="512 GB" ${capacidade === '512 GB' ? 'selected' : ''}>512 GB</option>
+      <option value="1 TB" ${capacidade === '1 TB' ? 'selected' : ''}>1 TB</option>
+      <option value="2 TB" ${capacidade === '2 TB' ? 'selected' : ''}>2 TB</option>
+      <option value="4 TB" ${capacidade === '4 TB' ? 'selected' : ''}>4 TB</option>
+      <option value="8 TB" ${capacidade === '8 TB' ? 'selected' : ''}>8 TB</option>
+    </select>
+    <button type="button" class="btn btn-secondary" style="width: auto; padding: 6px 10px; color: #ef4444;" onclick="removerLinhaDisco(this)" title="Remover Disco">
+      <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+    </button>
+  `;
+  container.appendChild(row);
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+}
+
+function removerLinhaDisco(btn) {
+  const row = btn.closest(".disk-row");
+  if (row) row.remove();
+}
+
+function extrairDiscosArmazenamento(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+  const rows = container.querySelectorAll(".disk-row");
+  const discos = [];
+  rows.forEach(r => {
+    const type = r.querySelector(".disk-type") ? r.querySelector(".disk-type").value : "";
+    const cap = r.querySelector(".disk-cap") ? r.querySelector(".disk-cap").value : "";
+    if (type && cap) discos.push({ tipo: type, capacidade: cap });
+  });
+  return discos;
+}
+
+function aoSelecionarFotoEquipamento(event, prefixo = "eq-") {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("A imagem selecionada é muito grande. Escolha uma foto de até 5MB.");
+    event.target.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    const hiddenInp = document.getElementById(`${prefixo}foto-base64`);
+    const previewContainer = document.getElementById(`${prefixo}foto-preview-container`);
+    const previewImg = document.getElementById(`${prefixo}foto-preview-img`);
+
+    if (hiddenInp) hiddenInp.value = base64;
+    if (previewImg) previewImg.src = base64;
+    if (previewContainer) previewContainer.style.display = "flex";
+  };
+  reader.readAsDataURL(file);
+}
+
+function removerFotoEquipamento(prefixo = "eq-") {
+  const hiddenInp = document.getElementById(`${prefixo}foto-base64`);
+  const previewContainer = document.getElementById(`${prefixo}foto-preview-container`);
+  const previewImg = document.getElementById(`${prefixo}foto-preview-img`);
+  const fileInp = document.getElementById(`${prefixo}foto-input`);
+
+  if (hiddenInp) hiddenInp.value = "";
+  if (previewImg) previewImg.src = "";
+  if (previewContainer) previewContainer.style.display = "none";
+  if (fileInp) fileInp.value = "";
+}
+
+function aoMudarLojaEquipamento(lojaId, prefixo = "eq-") {
+  const lojas = AppDatabase.getCollection("lojas") || [];
+  const lojaObj = lojas.find(l => String(l.id) === String(lojaId) || String(l.nome) === String(lojaId));
+  const cidadeEl = document.getElementById(`${prefixo}cidade`);
+  if (cidadeEl && lojaObj) {
+    if (lojaObj.cidade) {
+      cidadeEl.value = lojaObj.cidade;
+    } else if (lojaObj.nome) {
+      if (lojaObj.nome.toLowerCase().includes("maurilândia") || lojaObj.nome.toLowerCase().includes("maurilandia")) {
+        cidadeEl.value = "Maurilândia - GO";
+      } else if (lojaObj.nome.toLowerCase().includes("porteirão") || lojaObj.nome.toLowerCase().includes("porteirao")) {
+        cidadeEl.value = "Porteirão - GO";
+      } else if (lojaObj.nome.toLowerCase().includes("santa helena")) {
+        cidadeEl.value = "Santa Helena - GO";
+      } else if (lojaObj.nome.toLowerCase().includes("turvelândia") || lojaObj.nome.toLowerCase().includes("turvelandia")) {
+        cidadeEl.value = "Turvelândia - GO";
+      } else if (lojaObj.nome.toLowerCase().includes("acreúna") || lojaObj.nome.toLowerCase().includes("acreuna")) {
+        cidadeEl.value = "Acreúna - GO";
+      } else {
+        cidadeEl.value = lojaObj.cidade || "";
+      }
+    }
+  }
+}
+
+function formatarEMascaraMAC(input) {
+  let val = input.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+  if (val.length > 12) val = val.substring(0, 12);
+  let parts = [];
+  for (let i = 0; i < val.length; i += 2) {
+    parts.push(val.substring(i, i + 2));
+  }
+  input.value = parts.join(':');
+}
+
+function validarIPv4(ip) {
+  if (!ip) return true;
+  const regex = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+  return regex.test(ip.trim());
+}
+
+function atualizarSelecaoStatusRadio(radioEl) {
+  const formCard = radioEl.closest(".status-badge-radio-group");
+  if (!formCard) return;
+  formCard.querySelectorAll(".status-radio-label").forEach(l => l.classList.remove("selected"));
+  const parentLabel = radioEl.closest(".status-radio-label");
+  if (parentLabel) parentLabel.classList.add("selected");
+}
+
+function obterStatusSelecionado(groupName) {
+  const radio = document.querySelector(`input[name="${groupName}"]:checked`);
+  return radio ? radio.value : "ativo";
+}
+
+function marcarStatusRadio(groupName, valor) {
+  const radio = document.querySelector(`input[name="${groupName}"][value="${valor}"]`);
+  if (radio) {
+    radio.checked = true;
+    atualizarSelecaoStatusRadio(radio);
+  }
+}
+
+function extrairEspecificacoesTecnicasForm(prefixo = "eq-") {
+  const getVal = (id) => {
+    const el = document.getElementById(`${prefixo}${id}`);
+    return el ? el.value.trim() : "";
+  };
+
+  return {
+    processador: getVal("proc"),
+    ram_gb: getVal("ram"),
+    armazenamento: extrairDiscosArmazenamento(`${prefixo}discos-container`),
+    sistema_operacional: getVal("so"),
+    arquitetura: getVal("arq"),
+    impressora_tecnologia: getVal("imp-tec"),
+    impressora_tipo: getVal("imp-tipo"),
+    impressora_conexao: getVal("imp-conexao"),
+    impressora_suprimento: getVal("imp-sup"),
+    balanca_capacidade: getVal("bal-cap"),
+    balanca_precisao: getVal("bal-prec"),
+    balanca_interface: getVal("bal-interface"),
+    balanca_protocolo: getVal("bal-protocolo"),
+    dvr_canais: getVal("dvr-canais"),
+    dvr_discos: getVal("dvr-discos"),
+    dvr_porta: getVal("dvr-porta"),
+    camera_tecnologia: getVal("cam-tec"),
+    camera_resolucao: getVal("cam-res"),
+    camera_canal: getVal("cam-canal"),
+    camera_dvr_vinculado: getVal("cam-dvr"),
+    rede_portas: getVal("rede-portas"),
+    rede_poe: getVal("rede-poe"),
+    rede_rack: getVal("rede-rack"),
+    firmware_versao: getVal("firmware") || getVal("dvr-firmware") || getVal("rede-firmware"),
+    especificacao_geral: getVal("geral-esp")
+  };
+}
+
 async function criarNovoEquipamento(e) {
   e.preventDefault();
   if (!currentUser) return;
 
-  const usuario = document.getElementById("eq-usuario") ? document.getElementById("eq-usuario").value.trim() : "";
+  const codigo = document.getElementById("eq-codigo").value.trim();
+  const tipo = document.getElementById("eq-tipo").value;
   const nome = document.getElementById("eq-nome").value.trim();
+  const patrimonio = document.getElementById("eq-patrimonio").value.trim();
   const marca = document.getElementById("eq-marca").value.trim();
   const modelo = document.getElementById("eq-modelo").value.trim();
-  const patrimonio = document.getElementById("eq-patrimonio").value.trim();
   const serial = document.getElementById("eq-serial").value.trim();
-  const lote = document.getElementById("eq-lote").value.trim();
-  const dono = document.getElementById("eq-dono") ? document.getElementById("eq-dono").value.trim() : "";
+  const lote = document.getElementById("eq-lote") ? document.getElementById("eq-lote").value.trim() : "";
+  const mac = document.getElementById("eq-mac") ? document.getElementById("eq-mac").value.trim() : "";
+  const ip = document.getElementById("eq-ip") ? document.getElementById("eq-ip").value.trim() : "";
+  const status = obterStatusSelecionado("eq-status");
+
   const lojaId = document.getElementById("eq-loja").value;
+  const cidade = document.getElementById("eq-cidade") ? document.getElementById("eq-cidade").value.trim() : "";
+  const usuario = document.getElementById("eq-usuario") ? document.getElementById("eq-usuario").value.trim() : "";
+  const dono = document.getElementById("eq-dono") ? document.getElementById("eq-dono").value.trim() : "";
+  const localEspecifico = document.getElementById("eq-local-especifico") ? document.getElementById("eq-local-especifico").value.trim() : "";
   const valor = parseFloat(document.getElementById("eq-valor").value) || 1500.00;
 
-  if (!nome || !marca || !modelo || !patrimonio || !serial || !lote || !lojaId) {
-    alert("Por favor, preencha todos os campos obrigatórios.");
+  const fotoBase64 = document.getElementById("eq-foto-base64") ? document.getElementById("eq-foto-base64").value : "";
+  const acessorios = document.getElementById("eq-acessorios") ? document.getElementById("eq-acessorios").value.trim() : "";
+  const obs = document.getElementById("eq-obs") ? document.getElementById("eq-obs").value.trim() : "";
+
+  // Validação de campos obrigatórios
+  if (!codigo || !tipo || !nome || !marca || !modelo || !patrimonio || !serial || !lojaId) {
+    alert("Por favor, preencha todos os campos obrigatórios identificados com asterisco (*).");
     return;
   }
 
-  // Verifica se o patrimônio já existe
+  // Validação de IP caso preenchido
+  if (ip && !validarIPv4(ip)) {
+    alert("Endereço IP inválido. Utilize o formato padrão IPv4 (ex: 192.168.1.50).");
+    return;
+  }
+
+  // Validação de unicidade no cache/banco
   const eqList = AppDatabase.getCollection("equipamentos") || [];
-  const duplicate = eqList.some(eq => eq.codigo_patrimonio.toLowerCase() === patrimonio.toLowerCase());
-  if (duplicate) {
-    alert("Código de patrimônio já cadastrado em outro equipamento.");
+  const duplicatePatrimonio = eqList.some(eq => (eq.codigo_patrimonio && eq.codigo_patrimonio.toLowerCase() === patrimonio.toLowerCase()) || (eq.id && eq.id.toLowerCase() === codigo.toLowerCase()));
+  if (duplicatePatrimonio) {
+    alert(`O código patrimonial "${patrimonio}" já está em uso por outro equipamento cadastrado.`);
     return;
   }
 
   const selectedLojaObj = AppDatabase.getDoc("lojas", lojaId, "id") || (AppDatabase.getCollection("lojas") || []).find(l => String(l.id) === String(lojaId) || String(l.nome) === String(lojaId));
   const lojaNome = selectedLojaObj ? selectedLojaObj.nome : lojaId;
+  const specs = extrairEspecificacoesTecnicasForm("eq-");
 
   const newEq = {
-    id: "eq_" + Math.random().toString(36).substr(2, 9),
-    usuario: usuario || null,
+    id: codigo || ("eq_" + Math.random().toString(36).substr(2, 9)),
+    codigo_equipamento: codigo,
+    tipo_equipamento: tipo,
     nome_equipamento: nome,
     codigo_patrimonio: patrimonio,
-    loja_id: lojaId,
-    loja: lojaNome,
-    dono: dono || null,
     marca: marca,
     modelo: modelo,
     numero_serie: serial,
-    numero_lote: lote,
+    numero_lote: lote || null,
+    endereco_mac: mac || null,
+    endereco_ip: ip || null,
+    status: status || "ativo",
+    loja_id: lojaId,
+    loja: lojaNome,
+    cidade: cidade || null,
+    usuario: usuario || null,
+    dono: dono || null,
+    local_especifico: localEspecifico || null,
     valor_estimado: valor,
+    foto_url: fotoBase64 || null,
+    acessorios: acessorios || null,
+    observacoes_tecnicas: obs || null,
+    especificacoes_tecnicas: specs,
     data_cadastro: new Date().toISOString()
   };
 
+  const submitBtn = document.getElementById("btn-submit-criar-equipamento");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Gravando...`;
+  }
+
   try {
     await AppDatabase.insertDoc("equipamentos", newEq);
-    await AppDatabase.registrarAuditLog(currentUser.uid, "equipamento_cadastrado", `Cadastrado equipamento '${nome}' via painel web.`);
+    await AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "equipamento_cadastrado", `Cadastrou o equipamento '${nome}' [${patrimonio}] (${tipo})`);
     
-    alert("Equipamento cadastrado com sucesso!");
+    alert(`Equipamento [${patrimonio}] cadastrado com sucesso!`);
     fecharModal("modal-criar-equipamento");
     document.getElementById("form-criar-equipamento").reset();
+    removerFotoEquipamento("eq-");
     renderEquipamentos();
   } catch (err) {
-    console.error(err);
-    alert("Erro ao cadastrar equipamento.");
+    console.error("Erro ao salvar equipamento:", err);
+    alert("Erro ao gravar equipamento: " + err.message);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i data-lucide="check"></i> Cadastrar Equipamento`;
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
   }
 }
 
@@ -4119,28 +4732,47 @@ function abrirModalEditarEquipamento(id) {
     return;
   }
 
-  // Preenche opções de lojas nos selects
+  // Preenche opções de lojas e tipos
   popularLojasDropdown();
+  popularTiposEquipamentosDropdown("edit-eq-tipo", eq.tipo_equipamento || "Computador/PC");
 
-  // Preenche os campos do formulário
   document.getElementById("edit-eq-id").value = eq.id;
-  const userInp = document.getElementById("edit-eq-usuario");
-  if (userInp) userInp.value = eq.usuario || "";
+  document.getElementById("edit-eq-codigo").value = eq.codigo_equipamento || eq.id;
   document.getElementById("edit-eq-nome").value = eq.nome_equipamento || "";
+  document.getElementById("edit-eq-patrimonio").value = eq.codigo_patrimonio || "";
   document.getElementById("edit-eq-marca").value = eq.marca || "";
   document.getElementById("edit-eq-modelo").value = eq.modelo || "";
-  document.getElementById("edit-eq-patrimonio").value = eq.codigo_patrimonio || "";
   document.getElementById("edit-eq-serial").value = eq.numero_serie || "";
   document.getElementById("edit-eq-lote").value = eq.numero_lote || "";
-  const donoInp = document.getElementById("edit-eq-dono");
-  if (donoInp) donoInp.value = eq.dono || "";
+  document.getElementById("edit-eq-mac").value = eq.endereco_mac || "";
+  document.getElementById("edit-eq-ip").value = eq.endereco_ip || "";
+  marcarStatusRadio("edit-eq-status", eq.status || "ativo");
+
   document.getElementById("edit-eq-loja").value = eq.loja_id || "";
+  document.getElementById("edit-eq-cidade").value = eq.cidade || "";
+  document.getElementById("edit-eq-usuario").value = eq.usuario || "";
+  document.getElementById("edit-eq-dono").value = eq.dono || "";
+  document.getElementById("edit-eq-local-especifico").value = eq.local_especifico || "";
   document.getElementById("edit-eq-valor").value = eq.valor_estimado != null ? Number(eq.valor_estimado).toFixed(2) : "1500.00";
 
-  abrirModal("modal-editar-equipamento");
-  if (typeof lucide !== 'undefined' && lucide.createIcons) {
-    lucide.createIcons();
+  document.getElementById("edit-eq-acessorios").value = eq.acessorios || "";
+  document.getElementById("edit-eq-obs").value = eq.observacoes_tecnicas || "";
+
+  // Foto
+  if (eq.foto_url) {
+    document.getElementById("edit-eq-foto-base64").value = eq.foto_url;
+    document.getElementById("edit-eq-foto-preview-img").src = eq.foto_url;
+    document.getElementById("edit-eq-foto-preview-container").style.display = "flex";
+  } else {
+    removerFotoEquipamento("edit-eq-");
   }
+
+  // Especificações técnicas salvas
+  const specs = (typeof eq.especificacoes_tecnicas === 'object' && eq.especificacoes_tecnicas) ? eq.especificacoes_tecnicas : {};
+  renderCamposTecnicosDinamicos(eq.tipo_equipamento || "Computador/PC", "edit-eq-", specs);
+
+  abrirModal("modal-editar-equipamento");
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
 }
 
 async function salvarEdicaoEquipamento(e) {
@@ -4148,78 +4780,100 @@ async function salvarEdicaoEquipamento(e) {
   if (!currentUser) return;
 
   const id = document.getElementById("edit-eq-id").value;
-  const usuario = document.getElementById("edit-eq-usuario") ? document.getElementById("edit-eq-usuario").value.trim() : "";
+  const codigo = document.getElementById("edit-eq-codigo").value;
+  const tipo = document.getElementById("edit-eq-tipo").value;
   const nome = document.getElementById("edit-eq-nome").value.trim();
+  const patrimonio = document.getElementById("edit-eq-patrimonio").value.trim();
   const marca = document.getElementById("edit-eq-marca").value.trim();
   const modelo = document.getElementById("edit-eq-modelo").value.trim();
-  const patrimonio = document.getElementById("edit-eq-patrimonio").value.trim();
   const serial = document.getElementById("edit-eq-serial").value.trim();
-  const lote = document.getElementById("edit-eq-lote").value.trim();
-  const dono = document.getElementById("edit-eq-dono") ? document.getElementById("edit-eq-dono").value.trim() : "";
+  const lote = document.getElementById("edit-eq-lote") ? document.getElementById("edit-eq-lote").value.trim() : "";
+  const mac = document.getElementById("edit-eq-mac") ? document.getElementById("edit-eq-mac").value.trim() : "";
+  const ip = document.getElementById("edit-eq-ip") ? document.getElementById("edit-eq-ip").value.trim() : "";
+  const status = obterStatusSelecionado("edit-eq-status");
+
   const lojaId = document.getElementById("edit-eq-loja").value;
+  const cidade = document.getElementById("edit-eq-cidade") ? document.getElementById("edit-eq-cidade").value.trim() : "";
+  const usuario = document.getElementById("edit-eq-usuario") ? document.getElementById("edit-eq-usuario").value.trim() : "";
+  const dono = document.getElementById("edit-eq-dono") ? document.getElementById("edit-eq-dono").value.trim() : "";
+  const localEspecifico = document.getElementById("edit-eq-local-especifico") ? document.getElementById("edit-eq-local-especifico").value.trim() : "";
   const valor = parseFloat(document.getElementById("edit-eq-valor").value) || 1500.00;
 
-  if (!nome || !marca || !modelo || !patrimonio || !serial || !lote || !lojaId) {
-    alert("Por favor, preencha todos os campos obrigatórios.");
+  const fotoBase64 = document.getElementById("edit-eq-foto-base64") ? document.getElementById("edit-eq-foto-base64").value : "";
+  const acessorios = document.getElementById("edit-eq-acessorios") ? document.getElementById("edit-eq-acessorios").value.trim() : "";
+  const obs = document.getElementById("edit-eq-obs") ? document.getElementById("edit-eq-obs").value.trim() : "";
+
+  if (!tipo || !nome || !marca || !modelo || !patrimonio || !serial || !lojaId) {
+    alert("Por favor, preencha todos os campos obrigatórios (*).");
     return;
   }
 
-  // Verifica se o patrimônio já existe em outro equipamento
+  if (ip && !validarIPv4(ip)) {
+    alert("Endereço IP inválido. Utilize o formato padrão IPv4 (ex: 192.168.1.50).");
+    return;
+  }
+
   const eqList = AppDatabase.getCollection("equipamentos") || [];
   const duplicate = eqList.some(eq => String(eq.id) !== String(id) && String(eq.codigo_patrimonio).toLowerCase() === patrimonio.toLowerCase());
   if (duplicate) {
-    alert("Código de patrimônio já cadastrado em outro equipamento.");
+    alert(`Código de patrimônio "${patrimonio}" já cadastrado em outro equipamento.`);
     return;
   }
 
   const lojas = AppDatabase.getCollection("lojas") || [];
   const lojaObj = lojas.find(l => l.id === lojaId);
   const nomeLoja = lojaObj ? lojaObj.nome : "";
+  const specs = extrairEspecificacoesTecnicasForm("edit-eq-");
 
   const updates = {
+    tipo_equipamento: tipo,
     nome_equipamento: nome,
-    usuario: usuario || null,
-    dono: dono || null,
+    codigo_patrimonio: patrimonio,
     marca: marca,
     modelo: modelo,
-    codigo_patrimonio: patrimonio,
     numero_serie: serial,
-    numero_lote: lote,
+    numero_lote: lote || null,
+    endereco_mac: mac || null,
+    endereco_ip: ip || null,
+    status: status,
     loja_id: lojaId,
     loja: nomeLoja,
-    valor_estimado: valor
+    cidade: cidade || null,
+    usuario: usuario || null,
+    dono: dono || null,
+    local_especifico: localEspecifico || null,
+    valor_estimado: valor,
+    foto_url: fotoBase64 || null,
+    acessorios: acessorios || null,
+    observacoes_tecnicas: obs || null,
+    especificacoes_tecnicas: specs
   };
 
-  const submitBtn = e.target.querySelector("button[type='submit']");
+  const submitBtn = document.getElementById("btn-submit-editar-equipamento");
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Salvando...`;
   }
 
   try {
-    const updatedEq = AppDatabase.updateDoc("equipamentos", id, updates, "id");
-    await AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "equipamento_editado", `Editou informações do equipamento '${nome}' (Patrimônio: ${patrimonio})`);
+    AppDatabase.updateDoc("equipamentos", id, updates, "id");
+    await AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "equipamento_editado", `Editou o equipamento '${nome}' [${patrimonio}]`);
 
     alert("Equipamento atualizado com sucesso!");
     fecharModal("modal-editar-equipamento");
-
-    // Atualiza tabela de equipamentos
     renderEquipamentos();
 
-    // Se o prontuário estiver aberto, atualiza na hora
     if (currentSelectedEquipment && String(currentSelectedEquipment.id) === String(id)) {
       abrirDetalhesEquipamento(id);
     }
   } catch (err) {
     console.error("Erro ao editar equipamento:", err);
-    alert("Erro ao salvar alterações do equipamento: " + err.message);
+    alert("Erro ao salvar alterações: " + err.message);
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = `<i data-lucide="save"></i> Salvar Alterações`;
-      if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
-      }
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     }
   }
 }
@@ -4235,23 +4889,103 @@ function abrirDetalhesEquipamento(id) {
   const lojas = AppDatabase.getCollection("lojas");
   const lojaObj = lojas.find(l => l.id === eq.loja_id) || { nome: 'Unidade' };
   
-  const detUsuarioEl = document.getElementById("det-eq-usuario");
-  if (detUsuarioEl) detUsuarioEl.innerText = eq.usuario || 'Não informado';
+  // Dados básicos
   document.getElementById("det-eq-nome").innerText = eq.nome_equipamento;
-  document.getElementById("det-eq-patrimonio").innerText = eq.codigo_patrimonio;
+  document.getElementById("det-eq-patrimonio").innerText = eq.codigo_patrimonio || eq.id;
+  
+  const statusBadge = document.getElementById("det-eq-status-badge");
+  if (statusBadge) {
+    const statusMap = {
+      ativo: { text: "🟢 Ativo", bg: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "rgba(16, 185, 129, 0.3)" },
+      manutencao: { text: "🟡 Em Manutenção", bg: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", border: "rgba(245, 158, 11, 0.3)" },
+      reserva: { text: "🔵 Reserva", bg: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "rgba(56, 189, 248, 0.3)" },
+      inativo: { text: "⚪ Inativo", bg: "rgba(148, 163, 184, 0.15)", color: "#94a3b8", border: "rgba(148, 163, 184, 0.3)" },
+      baixado: { text: "🔴 Baixado", bg: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "rgba(239, 68, 68, 0.3)" }
+    };
+    const st = statusMap[eq.status] || statusMap.ativo;
+    statusBadge.innerText = st.text;
+    statusBadge.style.background = st.bg;
+    statusBadge.style.color = st.color;
+    statusBadge.style.border = `1px solid ${st.border}`;
+  }
+
+  // Foto
+  const fotoContainer = document.getElementById("det-eq-foto-container");
+  const fotoImg = document.getElementById("det-eq-foto-img");
+  if (fotoContainer && fotoImg) {
+    if (eq.foto_url) {
+      fotoImg.src = eq.foto_url;
+      fotoContainer.style.display = "block";
+    } else {
+      fotoContainer.style.display = "none";
+    }
+  }
+
+  document.getElementById("det-eq-tipo").innerText = eq.tipo_equipamento || 'Geral';
+  document.getElementById("det-eq-loja").innerText = lojaObj.nome;
+  document.getElementById("det-eq-cidade").innerText = eq.cidade || 'Não informada';
+  document.getElementById("det-eq-usuario").innerText = eq.usuario || 'Não informado';
   document.getElementById("det-eq-dono").innerText = eq.dono || 'Não informado';
+  document.getElementById("det-eq-local").innerText = eq.local_especifico || 'Geral';
   document.getElementById("det-eq-marca").innerText = eq.marca || 'N/A';
   document.getElementById("det-eq-modelo").innerText = eq.modelo || 'N/A';
   document.getElementById("det-eq-serial").innerText = eq.numero_serie || 'N/A';
   document.getElementById("det-eq-lote").innerText = eq.numero_lote || 'N/A';
-  document.getElementById("det-eq-loja").innerText = lojaObj.nome;
+  document.getElementById("det-eq-ip").innerText = eq.endereco_ip || 'Sem IP';
+  document.getElementById("det-eq-mac").innerText = eq.endereco_mac || 'Sem MAC';
   document.getElementById("det-eq-valor").innerText = "R$ " + (eq.valor_estimado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
+  // Renderiza especificações técnicas salvas
+  const specsCard = document.getElementById("det-eq-specs-card");
+  const specsContent = document.getElementById("det-eq-specs-content");
+  if (specsCard && specsContent) {
+    const s = eq.especificacoes_tecnicas || {};
+    let specsLines = [];
+    if (s.processador) specsLines.push(`<strong>Processador:</strong> ${s.processador}`);
+    if (s.ram_gb) specsLines.push(`<strong>Memória RAM:</strong> ${s.ram_gb}`);
+    if (Array.isArray(s.armazenamento) && s.armazenamento.length > 0) {
+      const discosFmt = s.armazenamento.map(d => `${d.tipo || d.tipoDisco} ${d.capacidade}`).join(", ");
+      specsLines.push(`<strong>Armazenamento:</strong> ${discosFmt}`);
+    }
+    if (s.sistema_operacional) specsLines.push(`<strong>S.O.:</strong> ${s.sistema_operacional} (${s.arquitetura || '64-bit'})`);
+    if (s.impressora_tecnologia) specsLines.push(`<strong>Tecnologia:</strong> ${s.impressora_tecnologia} (${s.impressora_tipo || ''})`);
+    if (s.impressora_conexao) specsLines.push(`<strong>Conexão:</strong> ${s.impressora_conexao}`);
+    if (s.impressora_suprimento) specsLines.push(`<strong>Suprimento:</strong> ${s.impressora_suprimento}`);
+    if (s.balanca_capacidade) specsLines.push(`<strong>Capacidade:</strong> ${s.balanca_capacidade} (Divisão: ${s.balanca_precisao || 'N/A'})`);
+    if (s.dvr_canais) specsLines.push(`<strong>Canais:</strong> ${s.dvr_canais} (Discos: ${s.dvr_discos || 'N/A'})`);
+    if (s.camera_tecnologia) specsLines.push(`<strong>Tecnologia Câmera:</strong> ${s.camera_tecnologia} (${s.camera_resolucao || ''})`);
+    if (s.rede_portas) specsLines.push(`<strong>Portas:</strong> ${s.rede_portas} (PoE: ${s.rede_poe || 'Não'})`);
+    if (s.especificacao_geral) specsLines.push(`<strong>Parâmetros:</strong> ${s.especificacao_geral}`);
+
+    if (specsLines.length > 0) {
+      specsContent.innerHTML = specsLines.join("<br>");
+      specsCard.style.display = "block";
+    } else {
+      specsCard.style.display = "none";
+    }
+  }
+
+  // Acessórios e observações
+  const acessoriosCard = document.getElementById("det-eq-acessorios-card");
+  const acessoriosTexto = document.getElementById("det-eq-acessorios-texto");
+  if (acessoriosCard && acessoriosTexto) {
+    let obsText = "";
+    if (eq.acessorios) obsText += `<strong>Acessórios:</strong> ${eq.acessorios}<br>`;
+    if (eq.observacoes_tecnicas) obsText += `<strong>Obs:</strong> ${eq.observacoes_tecnicas}`;
+    if (obsText) {
+      acessoriosTexto.innerHTML = obsText;
+      acessoriosCard.style.display = "block";
+    } else {
+      acessoriosCard.style.display = "none";
+    }
+  }
+
+  // QR Code
   const qrContainer = document.getElementById("det-eq-qrcode");
   qrContainer.innerHTML = "";
   
   new QRCode(qrContainer, {
-    text: eq.codigo_patrimonio,
+    text: eq.codigo_patrimonio || eq.id,
     width: 140,
     height: 140,
     colorDark : "#000000",
@@ -4273,11 +5007,9 @@ function abrirDetalhesEquipamento(id) {
   
   eqOS.forEach(o => {
     let osCusto = o.custo_total_materiais || 0;
-    
     if (osCusto === 0 && o.materiais && o.materiais.length > 0) {
       osCusto = o.materiais.reduce((acc, m) => acc + (m.quantidade * m.valor_unitario), 0);
     }
-    
     totalMaintenanceCost += osCusto;
     
     if (o.materiais && o.materiais.length > 0) {

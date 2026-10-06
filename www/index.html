@@ -40,7 +40,7 @@
     } catch (e) { }
   </script>
   <!-- Tailwind is avoided as per instructions, using vanilla style.css -->
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
   <!-- Lucide Icons via CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- QRCode Generator CDN -->
@@ -437,66 +437,242 @@
   </div>
 
   <!-- Modal: Criar Equipamento -->
+  <!-- Modal: Criar Equipamento -->
   <div id="modal-criar-equipamento" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 860px; width: 95%; max-height: 92vh; display: flex; flex-direction: column;">
       <div class="modal-header">
-        <h3>Cadastrar Novo Equipamento</h3>
-        <button class="modal-close-btn" onclick="fecharModal('modal-criar-equipamento')">&times;</button>
-      </div>
-      <form id="form-criar-equipamento" onsubmit="criarNovoEquipamento(event)">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="eq-usuario">Setor</label>
-            <input type="text" id="eq-usuario" class="input-control"
-              placeholder="Digite ou selecione o setor (ex: Compras / Caixa 01)" list="datalist-usuarios-cadastrados">
-            <datalist id="datalist-usuarios-cadastrados">
-              <!-- Populated dynamically with registered users -->
-            </datalist>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; color: var(--brand-color);">
+            <i data-lucide="cpu" style="width: 20px; height: 20px;"></i>
           </div>
-          <div class="form-group">
-            <label for="eq-nome">Nome do Equipamento *</label>
-            <input type="text" id="eq-nome" class="input-control" required placeholder="Ex: Impressora HP P1102">
-          </div>
-          <div class="form-group">
-            <label for="eq-marca">Marca *</label>
-            <input type="text" id="eq-marca" class="input-control" required placeholder="Ex: HP">
-          </div>
-          <div class="form-group">
-            <label for="eq-modelo">Modelo *</label>
-            <input type="text" id="eq-modelo" class="input-control" required placeholder="Ex: LaserJet P1102">
-          </div>
-          <div class="form-group">
-            <label for="eq-patrimonio">Código Patrimonial (QR Code) *</label>
-            <input type="text" id="eq-patrimonio" class="input-control" required placeholder="Ex: PAT-HP1102-01">
-          </div>
-          <div class="form-group">
-            <label for="eq-serial">Número de Série *</label>
-            <input type="text" id="eq-serial" class="input-control" required placeholder="Ex: 77698536">
-          </div>
-          <div class="form-group">
-            <label for="eq-lote">Número do Lote *</label>
-            <input type="text" id="eq-lote" class="input-control" required placeholder="Ex: faturamento">
-          </div>
-          <div class="form-group">
-            <label for="eq-dono">Dono / Responsável pelo Equipamento</label>
-            <input type="text" id="eq-dono" class="input-control"
-              placeholder="Ex: João Silva (Faturamento / Administrativo)">
-          </div>
-          <div class="form-group">
-            <label for="eq-loja">Loja / Unidade *</label>
-            <select id="eq-loja" class="input-control" required>
-              <!-- Populated dynamically with -- Selecione a Loja -- -->
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="eq-valor">Valor Estimado de Novo (R$)</label>
-            <input type="number" id="eq-valor" class="input-control" step="0.01" value="1500.00">
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 800;">Cadastrar Novo Equipamento</h3>
+            <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Registro de patrimônio, especificações técnicas e localização</p>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary"
-            onclick="fecharModal('modal-criar-equipamento')">Cancelar</button>
-          <button type="submit" class="btn">Cadastrar Equipamento</button>
+        <button class="modal-close-btn" onclick="fecharModal('modal-criar-equipamento')">&times;</button>
+      </div>
+      <form id="form-criar-equipamento" onsubmit="criarNovoEquipamento(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <div class="modal-body" style="overflow-y: auto; padding: 20px 24px; flex: 1;">
+
+          <!-- SEÇÃO A: IDENTIFICAÇÃO DO EQUIPAMENTO -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="shield-check"></i>
+              <span>A. Identificação do Equipamento</span>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="eq-codigo">Código do Equipamento (Único & Permanente) *</label>
+                <div style="position: relative;">
+                  <input type="text" id="eq-codigo" class="input-control readonly-code-input" readonly required placeholder="Ex: COMP-0001">
+                  <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; background: rgba(99, 102, 241, 0.2); color: #818cf8; padding: 2px 6px; border-radius: 4px;">Automático</span>
+                </div>
+                <div class="form-help-text">Gerado sequencialmente com prefixo do tipo e garantia de unicidade.</div>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-tipo">Tipo de Equipamento *</label>
+                <select id="eq-tipo" class="input-control" required onchange="aoMudarTipoEquipamentoForm(this.value, 'eq-')">
+                  <!-- Populated dynamically with LISTA_TIPOS_EQUIPAMENTOS -->
+                </select>
+                <div class="form-help-text">A seleção do tipo habilita os campos técnicos pertinentes abaixo.</div>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="eq-nome">Nome do Equipamento *</label>
+                <input type="text" id="eq-nome" class="input-control" required placeholder="Ex: Computador Checkout 01 ou PC Monitoramento 01">
+              </div>
+
+              <div class="form-group">
+                <label for="eq-patrimonio">Etiqueta Patrimonial (QR Code / Tag Física) *</label>
+                <input type="text" id="eq-patrimonio" class="input-control" required placeholder="Ex: PAT-COMP-01 ou PC-Monitoramento/01">
+                <div class="form-help-text">Código que constará na etiqueta física ou QR Code escaneável.</div>
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="eq-marca">Marca *</label>
+                <input type="text" id="eq-marca" class="input-control" required placeholder="Ex: Dell, HP, Intelbras, Toledo">
+              </div>
+
+              <div class="form-group">
+                <label for="eq-modelo">Modelo *</label>
+                <input type="text" id="eq-modelo" class="input-control" required placeholder="Ex: OptiPlex 3080, LaserJet P1102">
+              </div>
+
+              <div class="form-group">
+                <label for="eq-serial">Número de Série *</label>
+                <input type="text" id="eq-serial" class="input-control" required placeholder="Ex: DELL-SER-992 ou S/N">
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="eq-lote">Número do Lote</label>
+                <input type="text" id="eq-lote" class="input-control" placeholder="Ex: Lote Caixa 2024">
+              </div>
+
+              <div class="form-group">
+                <label for="eq-mac">Endereço MAC (Opcional)</label>
+                <input type="text" id="eq-mac" class="input-control" placeholder="00:1A:2B:3C:4D:5E" maxlength="17" oninput="formatarEMascaraMAC(this)">
+              </div>
+
+              <div class="form-group">
+                <label for="eq-ip">Endereço IP (Opcional)</label>
+                <input type="text" id="eq-ip" class="input-control" placeholder="192.168.1.50">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Status do Equipamento *</label>
+              <div class="status-badge-radio-group">
+                <label class="status-radio-label selected">
+                  <input type="radio" name="eq-status" value="ativo" checked onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                  <span>Ativo</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="eq-status" value="manutencao" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
+                  <span>Em Manutenção</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="eq-status" value="reserva" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;"></span>
+                  <span>Reserva</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="eq-status" value="inativo" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #94a3b8;"></span>
+                  <span>Inativo</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="eq-status" value="baixado" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></span>
+                  <span>Baixado</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO B: LOCALIZAÇÃO E RESPONSABILIDADE -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="map-pin"></i>
+              <span>B. Localização e Responsabilidade</span>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="eq-loja">Loja / Unidade *</label>
+                <select id="eq-loja" class="input-control" required onchange="aoMudarLojaEquipamento(this.value, 'eq-')">
+                  <!-- Populated dynamically with stores -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-cidade">Cidade</label>
+                <input type="text" id="eq-cidade" class="input-control" placeholder="Preenchida automaticamente pela Unidade">
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="eq-usuario">Setor</label>
+                <input type="text" id="eq-usuario" class="input-control" placeholder="Ex: Frente de Caixa, Monitoramento, Faturamento, Depósito" list="datalist-setores-cadastrados">
+                <datalist id="datalist-setores-cadastrados">
+                  <option value="Frente de Caixa"></option>
+                  <option value="Monitoramento / CFTV"></option>
+                  <option value="Faturamento"></option>
+                  <option value="Administrativo / Financeiro"></option>
+                  <option value="Depósito / Estoque"></option>
+                  <option value="Açougue"></option>
+                  <option value="Padaria"></option>
+                  <option value="Hortifruti"></option>
+                  <option value="Prevenção de Perdas"></option>
+                  <option value="TI / Servidores"></option>
+                </datalist>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-dono">Usuário Responsável pelo Equipamento</label>
+                <input type="text" id="eq-dono" class="input-control" placeholder="Digite ou selecione o responsável" list="datalist-usuarios-cadastrados">
+                <datalist id="datalist-usuarios-cadastrados">
+                  <!-- Populated dynamically with registered users -->
+                </datalist>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="eq-local-especifico">Local Específico</label>
+                <input type="text" id="eq-local-especifico" class="input-control" placeholder="Ex: Caixa 05, Mesa 02, Sala de Monitoramento, Rack TI">
+              </div>
+
+              <div class="form-group">
+                <label for="eq-valor">Valor Estimado de Novo (R$)</label>
+                <input type="number" id="eq-valor" class="input-control" step="0.01" value="1500.00">
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO C: CONFIGURAÇÃO TÉCNICA DINÂMICA -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="sliders"></i>
+              <span>C. Configuração Técnica Dinâmica</span>
+            </div>
+            <div id="eq-secao-tecnica-dinamica">
+              <!-- Rendered dynamically according to equipment type -->
+            </div>
+          </div>
+
+          <!-- SEÇÃO D: FOTO, ACESSÓRIOS E OBSERVAÇÕES -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="paperclip"></i>
+              <span>D. Foto, Acessórios e Observações Técnicas</span>
+            </div>
+
+            <div class="form-group">
+              <label>Foto do Equipamento</label>
+              <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <input type="file" id="eq-foto-input" accept="image/*" style="display: none;" onchange="aoSelecionarFotoEquipamento(event, 'eq-')">
+                <button type="button" class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 13px;" onclick="document.getElementById('eq-foto-input').click()">
+                  <i data-lucide="camera" style="width: 14px; height: 14px;"></i> Anexar / Tirar Foto
+                </button>
+                <input type="hidden" id="eq-foto-base64" value="">
+                <div id="eq-foto-preview-container" style="display: none; align-items: center; gap: 10px;">
+                  <img id="eq-foto-preview-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);">
+                  <button type="button" class="btn btn-secondary" style="width: auto; padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="removerFotoEquipamento('eq-')">
+                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Remover Foto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="eq-acessorios">Acessórios e Periféricos Vinculados</label>
+              <input type="text" id="eq-acessorios" class="input-control" placeholder="Ex: Fonte Bivolt original, Cabo de força, Teclado USB, Antena Wi-Fi">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="eq-obs">Observações Técnicas</label>
+              <textarea id="eq-obs" class="input-control" rows="2" placeholder="Anotações técnicas complementares, histórico de garantia, particularidades..."></textarea>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-secondary);">
+          <button type="button" class="btn btn-secondary" style="width: auto; padding: 10px 20px;" onclick="fecharModal('modal-criar-equipamento')">Cancelar</button>
+          <button type="submit" id="btn-submit-criar-equipamento" class="btn btn-primary" style="width: auto; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+            <i data-lucide="check"></i> Cadastrar Equipamento
+          </button>
         </div>
       </form>
     </div>
@@ -504,24 +680,50 @@
 
   <!-- Modal: Detalhes do Equipamento & QR Code -->
   <div id="modal-detalhes-equipamento" class="modal-overlay">
-    <div class="modal-content" style="max-width: 900px; width: 90%;">
+    <div class="modal-content" style="max-width: 920px; width: 92%; max-height: 90vh; display: flex; flex-direction: column;">
       <div class="modal-header">
-        <h3>Prontuário do Equipamento</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; color: var(--brand-color);">
+            <i data-lucide="file-text" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 800;">Prontuário do Equipamento</h3>
+            <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Controle patrimonial, especificações e histórico de manutenções</p>
+          </div>
+        </div>
         <button class="modal-close-btn" onclick="fecharModal('modal-detalhes-equipamento')">&times;</button>
       </div>
-      <div class="modal-body" style="color: var(--text-primary); padding: 24px;">
+      <div class="modal-body" style="color: var(--text-primary); padding: 24px; overflow-y: auto; flex: 1;">
         <div style="display: flex; gap: 32px; flex-wrap: wrap;">
 
           <!-- Coluna Esquerda: Dados Básicos & QR -->
-          <div
-            style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 20px; border-right: 1px solid var(--border-color); padding-right: 24px;">
+          <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 20px; border-right: 1px solid var(--border-color); padding-right: 24px;">
             <div style="text-align: center;">
               <h4 id="det-eq-nome" style="font-size: 20px; font-weight: 800; margin-bottom: 6px; color: #fff;">-</h4>
-              <span id="det-eq-patrimonio" class="badge"
-                style="background: rgba(99, 102, 241, 0.1); color: var(--primary-color); border: 1px solid rgba(99, 102, 241, 0.2); font-family: monospace; font-size: 13px; padding: 4px 10px;">-</span>
+              <div style="display: flex; justify-content: center; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                <span id="det-eq-patrimonio" class="badge" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-color); border: 1px solid rgba(99, 102, 241, 0.2); font-family: monospace; font-size: 13px; padding: 4px 10px;">-</span>
+                <span id="det-eq-status-badge" class="badge">-</span>
+              </div>
+            </div>
+
+            <!-- Imagem do Equipamento se houver -->
+            <div id="det-eq-foto-container" style="display: none; text-align: center;">
+              <img id="det-eq-foto-img" src="" style="max-width: 100%; max-height: 160px; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Tipo de Equipamento</p>
+                <p id="det-eq-tipo" style="font-weight: 600; color: #818cf8;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Loja / Unidade</p>
+                <p id="det-eq-loja" style="font-weight: 600;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Cidade</p>
+                <p id="det-eq-cidade" style="font-weight: 600;">-</p>
+              </div>
               <div>
                 <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Setor</p>
                 <p id="det-eq-usuario" style="font-weight: 600; color: #38bdf8;">-</p>
@@ -531,8 +733,8 @@
                 <p id="det-eq-dono" style="font-weight: 600; color: #818cf8;">-</p>
               </div>
               <div>
-                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Loja / Unidade</p>
-                <p id="det-eq-loja" style="font-weight: 600;">-</p>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Local Específico</p>
+                <p id="det-eq-local" style="font-weight: 600;">-</p>
               </div>
               <div>
                 <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Marca</p>
@@ -551,73 +753,80 @@
                 <p id="det-eq-lote" style="font-weight: 600;">-</p>
               </div>
               <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Endereço IP</p>
+                <p id="det-eq-ip" style="font-weight: 600; font-family: monospace; color: #34d399;">-</p>
+              </div>
+              <div>
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Endereço MAC</p>
+                <p id="det-eq-mac" style="font-weight: 600; font-family: monospace;">-</p>
+              </div>
+              <div>
                 <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 2px;">Valor Estimado (Novo)</p>
                 <p id="det-eq-valor" style="font-weight: 600; color: #10B981;">-</p>
               </div>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 16px; text-align: center;">
-              <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Etiqueta Patrimonial (QR
-                Code)</p>
-              <div style="display: flex; justify-content: center; margin-bottom: 12px;">
-                <div id="det-eq-qrcode"
-                  style="background: white; padding: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); display: inline-block;">
-                </div>
+            <!-- Card de Especificações Técnicas -->
+            <div id="det-eq-specs-card" style="display: none; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-sm); padding: 12px; font-size: 12px;">
+              <h6 style="color: #818cf8; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="sliders" style="width: 14px; height: 14px;"></i> Especificações Técnicas
+              </h6>
+              <div id="det-eq-specs-content" style="line-height: 1.6; color: var(--text-secondary);">
+                <!-- Specs content rendered dynamically -->
               </div>
-              <button class="btn" onclick="imprimirQRCodeEquipamento()"
-                style="width: auto; margin: 0 auto; display: flex; align-items: center; gap: 8px;">
+            </div>
+
+            <!-- Acessórios & Observações -->
+            <div id="det-eq-acessorios-card" style="display: none; font-size: 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px;">
+              <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">Acessórios & Observações:</span>
+              <p id="det-eq-acessorios-texto" style="margin: 0; color: var(--text-primary);"></p>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 16px; text-align: center;">
+              <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Etiqueta Patrimonial (QR Code)</p>
+              <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+                <div id="det-eq-qrcode" style="background: white; padding: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); display: inline-block;"></div>
+              </div>
+              <button class="btn" onclick="imprimirQRCodeEquipamento()" style="width: auto; margin: 0 auto; display: flex; align-items: center; gap: 8px;">
                 <i data-lucide="printer"></i> Imprimir Etiqueta
               </button>
             </div>
           </div>
 
           <!-- Coluna Direita: Viabilidade, Linha do Tempo e Peças -->
-          <div
-            style="flex: 1.6; min-width: 320px; display: flex; flex-direction: column; gap: 24px; max-height: 550px; overflow-y: auto; padding-right: 8px;">
+          <div style="flex: 1.6; min-width: 320px; display: flex; flex-direction: column; gap: 24px; max-height: 550px; overflow-y: auto; padding-right: 8px;">
 
             <!-- Análise de Viabilidade Financeira -->
-            <div id="det-eq-viabilidade-card"
-              style="padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px;">
+            <div id="det-eq-viabilidade-card" style="padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span
-                  style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff;">Viabilidade
-                  Financeira</span>
-                <span id="det-eq-viabilidade-tag" class="badge"
-                  style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-md);">-</span>
+                <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff;">Viabilidade Financeira</span>
+                <span id="det-eq-viabilidade-tag" class="badge" style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-md);">-</span>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
                 <span style="color: var(--text-secondary);">Gasto total em manutenção:</span>
                 <span id="det-eq-viabilidade-gasto" style="font-weight: 700;">-</span>
               </div>
-              <div
-                style="background-color: var(--bg-tertiary); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px;">
-                <div id="det-eq-viabilidade-bar" style="height: 100%; width: 0%; transition: width 0.6s ease-in-out;">
-                </div>
+              <div style="background-color: var(--bg-tertiary); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px;">
+                <div id="det-eq-viabilidade-bar" style="height: 100%; width: 0%; transition: width 0.6s ease-in-out;"></div>
               </div>
             </div>
 
             <!-- Peças Substituídas -->
             <div>
-              <h5
-                style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="wrench" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Peças e
-                Componentes Substituídos
+              <h5 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="wrench" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Peças e Componentes Substituídos
               </h5>
-              <div id="det-eq-pecas-container"
-                style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; max-height: 120px; overflow-y: auto; font-size: 13px;">
+              <div id="det-eq-pecas-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; max-height: 120px; overflow-y: auto; font-size: 13px;">
                 <!-- Replaced parts list will render here -->
               </div>
             </div>
 
             <!-- Linha do Tempo de OS -->
             <div>
-              <h5
-                style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="git-commit" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Linha
-                do Tempo de Manutenções
+              <h5 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="git-commit" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Linha do Tempo de Manutenções
               </h5>
-              <div id="det-eq-timeline-container"
-                style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; border-left: 2px solid var(--border-color);">
+              <div id="det-eq-timeline-container" style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; border-left: 2px solid var(--border-color);">
                 <!-- Timeline elements will render here -->
               </div>
             </div>
@@ -626,11 +835,9 @@
 
         </div>
       </div>
-      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-        <button class="btn btn-secondary" onclick="fecharModal('modal-detalhes-equipamento')">Fechar</button>
-        <button class="btn btn-primary"
-          onclick="abrirModalEditarEquipamento(currentSelectedEquipment ? currentSelectedEquipment.id : null)"
-          style="width: auto; display: inline-flex; align-items: center; gap: 8px;">
+      <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary);">
+        <button class="btn btn-secondary" style="width: auto; padding: 10px 20px;" onclick="fecharModal('modal-detalhes-equipamento')">Fechar</button>
+        <button class="btn btn-primary" onclick="abrirModalEditarEquipamento(currentSelectedEquipment ? currentSelectedEquipment.id : null)" style="width: auto; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
           <i data-lucide="edit-3"></i> Editar Equipamento
         </button>
       </div>
@@ -639,63 +846,223 @@
 
   <!-- Modal: Editar Equipamento -->
   <div id="modal-editar-equipamento" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 860px; width: 95%; max-height: 92vh; display: flex; flex-direction: column;">
       <div class="modal-header">
-        <h3>Editar Equipamento</h3>
-        <button class="modal-close-btn" onclick="fecharModal('modal-editar-equipamento')">&times;</button>
-      </div>
-      <form id="form-editar-equipamento" onsubmit="salvarEdicaoEquipamento(event)">
-        <input type="hidden" id="edit-eq-id">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="edit-eq-usuario">Setor</label>
-            <input type="text" id="edit-eq-usuario" class="input-control"
-              placeholder="Digite ou selecione o setor (ex: Compras / Caixa 01)" list="datalist-usuarios-cadastrados">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; color: var(--brand-color);">
+            <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
           </div>
-          <div class="form-group">
-            <label for="edit-eq-nome">Nome do Equipamento *</label>
-            <input type="text" id="edit-eq-nome" class="input-control" required placeholder="Ex: Impressora HP P1102">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-marca">Marca *</label>
-            <input type="text" id="edit-eq-marca" class="input-control" required placeholder="Ex: HP">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-modelo">Modelo *</label>
-            <input type="text" id="edit-eq-modelo" class="input-control" required placeholder="Ex: LaserJet P1102">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-patrimonio">Código Patrimonial (QR Code) *</label>
-            <input type="text" id="edit-eq-patrimonio" class="input-control" required placeholder="Ex: PAT-HP1102-01">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-serial">Número de Série *</label>
-            <input type="text" id="edit-eq-serial" class="input-control" required placeholder="Ex: 77698536">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-lote">Número do Lote *</label>
-            <input type="text" id="edit-eq-lote" class="input-control" required placeholder="Ex: faturamento">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-dono">Dono / Responsável pelo Equipamento</label>
-            <input type="text" id="edit-eq-dono" class="input-control"
-              placeholder="Ex: João Silva (Faturamento / Administrativo)">
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-loja">Loja / Unidade *</label>
-            <select id="edit-eq-loja" class="input-control" required>
-              <!-- Populated dynamically with stores -->
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="edit-eq-valor">Valor Estimado de Novo (R$)</label>
-            <input type="number" id="edit-eq-valor" class="input-control" step="0.01" value="1500.00">
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 800;">Editar Equipamento</h3>
+            <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Atualização cadastral e especificações técnicas</p>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary"
-            onclick="fecharModal('modal-editar-equipamento')">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Salvar Alterações</button>
+        <button class="modal-close-btn" onclick="fecharModal('modal-editar-equipamento')">&times;</button>
+      </div>
+      <form id="form-editar-equipamento" onsubmit="salvarEdicaoEquipamento(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <input type="hidden" id="edit-eq-id">
+        <div class="modal-body" style="overflow-y: auto; padding: 20px 24px; flex: 1;">
+
+          <!-- SEÇÃO A: IDENTIFICAÇÃO DO EQUIPAMENTO -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="shield-check"></i>
+              <span>A. Identificação do Equipamento</span>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-eq-codigo">Código do Equipamento (Permanente) *</label>
+                <div style="position: relative;">
+                  <input type="text" id="edit-eq-codigo" class="input-control readonly-code-input" readonly required>
+                  <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; background: rgba(99, 102, 241, 0.2); color: #818cf8; padding: 2px 6px; border-radius: 4px;">Código Fixo</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-tipo">Tipo de Equipamento *</label>
+                <select id="edit-eq-tipo" class="input-control" required onchange="aoMudarTipoEquipamentoForm(this.value, 'edit-eq-')">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-eq-nome">Nome do Equipamento *</label>
+                <input type="text" id="edit-eq-nome" class="input-control" required placeholder="Ex: Computador Checkout 01">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-patrimonio">Etiqueta Patrimonial (QR Code / Tag Física) *</label>
+                <input type="text" id="edit-eq-patrimonio" class="input-control" required placeholder="Ex: PAT-COMP-01">
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="edit-eq-marca">Marca *</label>
+                <input type="text" id="edit-eq-marca" class="input-control" required placeholder="Ex: Dell">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-modelo">Modelo *</label>
+                <input type="text" id="edit-eq-modelo" class="input-control" required placeholder="Ex: OptiPlex 3080">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-serial">Número de Série *</label>
+                <input type="text" id="edit-eq-serial" class="input-control" required placeholder="Ex: 77698536">
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="edit-eq-lote">Número do Lote</label>
+                <input type="text" id="edit-eq-lote" class="input-control" placeholder="Ex: faturamento">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-mac">Endereço MAC (Opcional)</label>
+                <input type="text" id="edit-eq-mac" class="input-control" placeholder="00:1A:2B:3C:4D:5E" maxlength="17" oninput="formatarEMascaraMAC(this)">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-ip">Endereço IP (Opcional)</label>
+                <input type="text" id="edit-eq-ip" class="input-control" placeholder="192.168.1.50">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Status do Equipamento *</label>
+              <div class="status-badge-radio-group">
+                <label class="status-radio-label">
+                  <input type="radio" name="edit-eq-status" value="ativo" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                  <span>Ativo</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="edit-eq-status" value="manutencao" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
+                  <span>Em Manutenção</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="edit-eq-status" value="reserva" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;"></span>
+                  <span>Reserva</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="edit-eq-status" value="inativo" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #94a3b8;"></span>
+                  <span>Inativo</span>
+                </label>
+                <label class="status-radio-label">
+                  <input type="radio" name="edit-eq-status" value="baixado" onchange="atualizarSelecaoStatusRadio(this)">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></span>
+                  <span>Baixado</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO B: LOCALIZAÇÃO E RESPONSABILIDADE -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="map-pin"></i>
+              <span>B. Localização e Responsabilidade</span>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-eq-loja">Loja / Unidade *</label>
+                <select id="edit-eq-loja" class="input-control" required onchange="aoMudarLojaEquipamento(this.value, 'edit-eq-')">
+                  <!-- Populated dynamically with stores -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-cidade">Cidade</label>
+                <input type="text" id="edit-eq-cidade" class="input-control" placeholder="Preenchida automaticamente pela Unidade">
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-eq-usuario">Setor</label>
+                <input type="text" id="edit-eq-usuario" class="input-control" placeholder="Ex: Frente de Caixa, Monitoramento, Faturamento, Depósito" list="datalist-setores-cadastrados">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-dono">Usuário Responsável pelo Equipamento</label>
+                <input type="text" id="edit-eq-dono" class="input-control" placeholder="Digite ou selecione o responsável" list="datalist-usuarios-cadastrados">
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-eq-local-especifico">Local Específico</label>
+                <input type="text" id="edit-eq-local-especifico" class="input-control" placeholder="Ex: Caixa 05, Mesa 02, Sala de Monitoramento">
+              </div>
+
+              <div class="form-group">
+                <label for="edit-eq-valor">Valor Estimado de Novo (R$)</label>
+                <input type="number" id="edit-eq-valor" class="input-control" step="0.01" value="1500.00">
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO C: CONFIGURAÇÃO TÉCNICA DINÂMICA -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="sliders"></i>
+              <span>C. Configuração Técnica Dinâmica</span>
+            </div>
+            <div id="edit-eq-secao-tecnica-dinamica">
+              <!-- Rendered dynamically according to equipment type -->
+            </div>
+          </div>
+
+          <!-- SEÇÃO D: FOTO, ACESSÓRIOS E OBSERVAÇÕES -->
+          <div class="form-section-card">
+            <div class="form-section-header">
+              <i data-lucide="paperclip"></i>
+              <span>D. Foto, Acessórios e Observações Técnicas</span>
+            </div>
+
+            <div class="form-group">
+              <label>Foto do Equipamento</label>
+              <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <input type="file" id="edit-eq-foto-input" accept="image/*" style="display: none;" onchange="aoSelecionarFotoEquipamento(event, 'edit-eq-')">
+                <button type="button" class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 13px;" onclick="document.getElementById('edit-eq-foto-input').click()">
+                  <i data-lucide="camera" style="width: 14px; height: 14px;"></i> Alterar Foto
+                </button>
+                <input type="hidden" id="edit-eq-foto-base64" value="">
+                <div id="edit-eq-foto-preview-container" style="display: none; align-items: center; gap: 10px;">
+                  <img id="edit-eq-foto-preview-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);">
+                  <button type="button" class="btn btn-secondary" style="width: auto; padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="removerFotoEquipamento('edit-eq-')">
+                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Remover Foto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-eq-acessorios">Acessórios e Periféricos Vinculados</label>
+              <input type="text" id="edit-eq-acessorios" class="input-control" placeholder="Ex: Fonte Bivolt, Cabo HDMI, Teclado USB">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="edit-eq-obs">Observações Técnicas</label>
+              <textarea id="edit-eq-obs" class="input-control" rows="2" placeholder="Anotações técnicas complementares, histórico de garantia, particularidades..."></textarea>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-secondary);">
+          <button type="button" class="btn btn-secondary" style="width: auto; padding: 10px 20px;" onclick="fecharModal('modal-editar-equipamento')">Cancelar</button>
+          <button type="submit" id="btn-submit-editar-equipamento" class="btn btn-primary" style="width: auto; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+            <i data-lucide="save"></i> Salvar Alterações
+          </button>
         </div>
       </form>
     </div>
@@ -1154,9 +1521,9 @@
   </div>
 
   <!-- DB and JS files -->
-  <script src="db.js?v=54"></script>
+  <script src="db.js?v=55"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <script src="app.js?v=98"></script>
+  <script src="app.js?v=99"></script>
 </body>
 
 </html>
