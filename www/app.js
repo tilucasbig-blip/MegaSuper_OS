@@ -2426,7 +2426,7 @@ function adicionarMaterialOS(e) {
   
   const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
   AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Adicionou materiais usados na OS", currentUserId, osId, `Adicionou ${quantidade}x ${nomeMaterial} (R$ ${(quantidade * valorUnitario).toFixed(2)}) à OS #${osId}`);
+  AppDatabase.registrarLog("Adicionou materiais usados na OS", currentUserId, osId, `Adicionou ${qty}x ${nomeMaterial} (R$ ${(qty * price).toFixed(2)}) à OS #${osId}`);
   
   fecharModal("modal-adicionar-material");
   abrirOSDetails(osId);
