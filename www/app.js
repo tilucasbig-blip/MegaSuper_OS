@@ -5298,7 +5298,7 @@ function popularEquipamentosCadastradosDropdown() {
   const datalist = document.getElementById("datalist-equipamentos-patrimonio");
   if (!datalist) return;
   
-  const equipamentos = AppDatabase.getCollection("equipamentos") || [];
+  const todosEquipamentos = AppDatabase.getCollection("equipamentos") || [];
   const categoriasPadrao = LISTA_TIPOS_EQUIPAMENTOS.map(e => e.id);
   
   let userPermissoes = null;
@@ -5306,24 +5306,69 @@ function popularEquipamentosCadastradosDropdown() {
     userPermissoes = currentUser.tipos_equipamentos;
   }
   
+  // Filtra exclusivamente os equipamentos vinculados à pessoa ou ao setor da pessoa
+  let equipamentos = todosEquipamentos;
+  if (currentUser && currentUser.role === 'usuario') {
+    const uNome = (currentUser.nome || "").toLowerCase().trim();
+    const uUser = (currentUser.usuario || "").toLowerCase().trim();
+    const uCargo = (currentUser.cargo || "").toLowerCase().trim();
+    const uLoja = (currentUser.loja || "").toLowerCase().trim();
+
+    equipamentos = todosEquipamentos.filter(eq => {
+      const eqDono = (eq.dono || "").toLowerCase().trim();
+      const eqSetor = (eq.usuario || "").toLowerCase().trim();
+      const eqLocal = (eq.local_especifico || "").toLowerCase().trim();
+      const eqLoja = (eq.loja || "").toLowerCase().trim();
+
+      // 1. Vinculação direta ao Responsável (Dono)
+      const matchDono = eqDono && (
+        (uNome && (eqDono.includes(uNome) || uNome.includes(eqDono))) ||
+        (uUser && (eqDono.includes(uUser) || uUser.includes(eqDono)))
+      );
+
+      // 2. Vinculação ao Setor / Cargo do Usuário
+      const matchSetor = (
+        (uCargo && eqSetor && (eqSetor.includes(uCargo) || uCargo.includes(eqSetor))) ||
+        (uCargo && eqLocal && eqLocal.includes(uCargo)) ||
+        (uCargo && eqDono && eqDono.includes(uCargo)) ||
+        (uNome && eqSetor && (eqSetor.includes(uNome) || uNome.includes(eqSetor)))
+      );
+
+      // 3. Verificação de Loja/Unidade (se especificada em ambos)
+      const matchLoja = !uLoja || !eqLoja || eqLoja.includes(uLoja) || uLoja.includes(eqLoja);
+
+      return (matchDono || matchSetor) && matchLoja;
+    });
+  }
+
   let html = "";
   
-  // 1. Equipamentos cadastrados
+  // 1. Equipamentos cadastrados permitidos
   equipamentos.forEach(eq => {
-    const isUserEquipment = currentUser && eq.usuario && eq.usuario.toLowerCase().includes(currentUser.nome.toLowerCase());
+    const uNome = currentUser ? (currentUser.nome || "").toLowerCase().trim() : "";
+    const isUserEquipment = uNome && eq.dono && eq.dono.toLowerCase().includes(uNome);
+    const cod = eq.codigo_patrimonio || eq.codigo_equipamento || eq.id;
+    const setorTxt = eq.usuario ? ` [${eq.usuario}]` : '';
+    const donoTxt = eq.dono ? ` (${eq.dono})` : '';
     
     if (isUserEquipment) {
-      html += `<option value="${eq.codigo_patrimonio}">⭐ Seu Equipamento: ${eq.nome_equipamento} (${eq.codigo_patrimonio})</option>`;
+      html += `<option value="${cod}">⭐ Meu Equipamento: ${eq.nome_equipamento}${donoTxt} - ${cod}</option>`;
     } else {
-      html += `<option value="${eq.codigo_patrimonio}">${eq.nome_equipamento} (${eq.marca || ''} ${eq.modelo || ''}) - ${eq.codigo_patrimonio}</option>`;
+      html += `<option value="${cod}">${eq.nome_equipamento}${setorTxt}${donoTxt} - ${cod}</option>`;
     }
   });
   
-  // 2. Categorias gerais permitidas para o usuário
-  const categoriasParaMostrar = userPermissoes ? categoriasPadrao.filter(c => userPermissoes.includes(c)) : categoriasPadrao;
-  categoriasParaMostrar.forEach(cat => {
-    html += `<option value="${cat}">Categoria Geral: ${cat}</option>`;
-  });
+  // 2. Categorias gerais permitidas
+  if (!currentUser || currentUser.role !== 'usuario') {
+    categoriasPadrao.forEach(cat => {
+      html += `<option value="${cat}">Categoria Geral: ${cat}</option>`;
+    });
+  } else if (userPermissoes && userPermissoes.length > 0) {
+    const categoriasParaMostrar = categoriasPadrao.filter(c => userPermissoes.includes(c));
+    categoriasParaMostrar.forEach(cat => {
+      html += `<option value="${cat}">Categoria Geral: ${cat}</option>`;
+    });
+  }
   
   datalist.innerHTML = html;
 }
