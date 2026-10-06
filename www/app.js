@@ -401,7 +401,7 @@ function iniciarAutoRefresh30s() {
       console.log("🔄 [30s] Sincronizando e atualizando dados do sistema...");
       
       // 1. Sincroniza os dados mais recentes do banco (sempre incluindo usuários para validar sessão ativa)
-      let targetCols = ["users", "os", "os_materiais", "os_mensagens", "notificacoes"];
+      let targetCols = ["users", "lojas", "equipamentos", "os", "os_materiais", "os_mensagens", "notificacoes"];
       if (currentRoute === 'estoque') targetCols.push("estoque", "movimentacoes_estoque");
       else if (currentRoute === 'logs') targetCols.push("logs");
       else if (currentRoute === 'usuarios') targetCols.push("password_reset_requests");
@@ -751,7 +751,7 @@ async function navegarPara(route) {
   executarRenderizacaoView();
   
   // 2. BUSCA OS DADOS MAIS RECENTES EM SEGUNDO PLANO E ATUALIZA A VIEW SE A ROTA AINDA FOR A MESMA
-  let targetCols = ["os", "os_materiais", "os_mensagens", "notificacoes"];
+  let targetCols = ["os", "os_materiais", "os_mensagens", "notificacoes", "equipamentos", "lojas"];
   if (route === 'estoque') {
     targetCols.push("estoque", "movimentacoes_estoque");
   } else if (route === 'logs') {
@@ -1812,6 +1812,11 @@ function abrirModal(id) {
     }
     
     if (id === 'modal-criar-os') {
+      AppDatabase.load(["equipamentos", "lojas"]).then(() => {
+        popularLojasDropdown();
+        popularEquipamentosCadastradosDropdown();
+        atualizarPrioridadeAutomatica();
+      }).catch(() => {});
       popularLojasDropdown();
       popularEquipamentosCadastradosDropdown();
       atualizarPrioridadeAutomatica();
@@ -4539,14 +4544,10 @@ function tickScanner() {
         aoDigitarCodigoPatrimonio(decodedValue);
       }
       
-      const equipamentos = AppDatabase.getCollection("equipamentos") || [];
-      const eq = equipamentos.find(e => (e.codigo_patrimonio && e.codigo_patrimonio.toLowerCase() === decodedValue.toLowerCase()) || (e.id && e.id.toLowerCase() === decodedValue.toLowerCase()));
-      
-      if (eq) {
-        alert(`Equipamento detectado: [${eq.codigo_patrimonio}] ${eq.nome_equipamento}`);
-      } else {
-        alert(`Código lido: "${decodedValue}" (não cadastrado no banco de equipamentos).`);
+      if (navigator.vibrate) {
+        try { navigator.vibrate(100); } catch (e) {}
       }
+      
       desativarWebcamScanner();
       return;
     }
@@ -4722,14 +4723,27 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
   }
   
   const cleanCode = rawCode.toLowerCase();
+  const cleanAlpha = cleanCode.replace(/[^a-z0-9]/g, '');
   const cleanCategory = rawCode.replace(/^Categoria Geral:\s*/i, '').trim();
   const equipamentos = AppDatabase.getCollection("equipamentos") || [];
   
-  // Localiza equipamento no banco/cache por código de patrimônio ou ID
-  const eq = equipamentos.find(e => 
-    (e.codigo_patrimonio && e.codigo_patrimonio.toLowerCase() === cleanCode) ||
-    (e.id && e.id.toLowerCase() === cleanCode)
-  );
+  // Localiza equipamento no banco/cache por código de patrimônio, ID, nome ou número de série
+  const eq = equipamentos.find(e => {
+    const cp = (e.codigo_patrimonio || "").toLowerCase().trim();
+    const id = String(e.id || "").toLowerCase().trim();
+    const nm = (e.nome_equipamento || "").toLowerCase().trim();
+    const ns = (e.numero_serie || "").toLowerCase().trim();
+    
+    if (cp && (cp === cleanCode || (cleanAlpha && cp.replace(/[^a-z0-9]/g, '') === cleanAlpha))) return true;
+    if (id && (id === cleanCode || (cleanAlpha && id.replace(/[^a-z0-9]/g, '') === cleanAlpha))) return true;
+    if (nm && (nm === cleanCode || (cleanAlpha && nm.replace(/[^a-z0-9]/g, '') === cleanAlpha))) return true;
+    if (ns && (ns === cleanCode || (cleanAlpha && ns.replace(/[^a-z0-9]/g, '') === cleanAlpha))) return true;
+    return false;
+  }) || equipamentos.find(e => {
+    const cp = (e.codigo_patrimonio || "").toLowerCase().trim();
+    const nm = (e.nome_equipamento || "").toLowerCase().trim();
+    return (cp && cleanCode.includes(cp)) || (nm && cleanCode.includes(nm));
+  });
   
   if (eq) {
     if (hiddenIdEl) hiddenIdEl.value = eq.id;
@@ -4750,7 +4764,7 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
       generalCategorySelect.value = "Servidor";
     } else if (nameLower.includes("internet") || nameLower.includes("roteador") || nameLower.includes("switch") || nameLower.includes("modem")) {
       generalCategorySelect.value = "Internet";
-    } else if (nameLower.includes("segurança") || nameLower.includes("seguranca") || nameLower.includes("cftv") || nameLower.includes("camera") || nameLower.includes("câmera") || nameLower.includes("dvr") || nameLower.includes("nvr")) {
+    } else if (nameLower.includes("segurança") || nameLower.includes("seguranca") || nameLower.includes("cftv") || nameLower.includes("camera") || nameLower.includes("câmera") || nameLower.includes("dvr") || nameLower.includes("nvr") || nameLower.includes("monitoramento")) {
       generalCategorySelect.value = "Equipamentos de Segurança Eletrônica";
     } else if (nameLower.includes("alarme")) {
       generalCategorySelect.value = "Central de Alarme";
@@ -4793,12 +4807,40 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
           </div>
         </div>
       `;
-      lucide.createIcons();
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     }
   } else {
     if (hiddenIdEl) hiddenIdEl.value = "";
-    if (generalCategorySelect && cleanCategory) {
-      generalCategorySelect.value = cleanCategory;
+    
+    // Tenta inferir categoria automaticamente pelo texto digitado/escaneado
+    if (generalCategorySelect) {
+      if (cleanCategory && LISTA_TIPOS_EQUIPAMENTOS.some(t => t.id.toLowerCase() === cleanCategory.toLowerCase())) {
+        generalCategorySelect.value = cleanCategory;
+      } else if (cleanCode.includes("pdv") || cleanCode.includes("cpu") || cleanCode.includes("caixa") || cleanCode.includes("checkout")) {
+        generalCategorySelect.value = "PDV/CPU";
+      } else if (cleanCode.includes("impressora") || cleanCode.includes("printer")) {
+        generalCategorySelect.value = "Impressora";
+      } else if (cleanCode.includes("computador") || cleanCode.includes("pc") || cleanCode.includes("dell") || cleanCode.includes("desktop") || cleanCode.includes("notebook")) {
+        generalCategorySelect.value = "Computador";
+      } else if (cleanCode.includes("monitoramento") || cleanCode.includes("cftv") || cleanCode.includes("camera") || cleanCode.includes("câmera") || cleanCode.includes("dvr") || cleanCode.includes("nvr") || cleanCode.includes("segurança") || cleanCode.includes("seguranca")) {
+        generalCategorySelect.value = "Equipamentos de Segurança Eletrônica";
+      } else if (cleanCode.includes("monitor") || cleanCode.includes("tela")) {
+        generalCategorySelect.value = "Monitor";
+      } else if (cleanCode.includes("balança") || cleanCode.includes("balanca")) {
+        generalCategorySelect.value = "Balança de checkout";
+      } else if (cleanCode.includes("servidor") || cleanCode.includes("server")) {
+        generalCategorySelect.value = "Servidor";
+      } else if (cleanCode.includes("internet") || cleanCode.includes("roteador") || cleanCode.includes("switch") || cleanCode.includes("modem")) {
+        generalCategorySelect.value = "Internet";
+      } else if (cleanCode.includes("alarme")) {
+        generalCategorySelect.value = "Central de Alarme";
+      } else if (cleanCode.includes("acesso") || cleanCode.includes("catraca") || cleanCode.includes("fechadura")) {
+        generalCategorySelect.value = "Controle de Acesso";
+      } else if (cleanCode.includes("cerca")) {
+        generalCategorySelect.value = "Cerca Elétrica";
+      } else if (cleanCode.includes("ponto") || cleanCode.includes("tablet")) {
+        generalCategorySelect.value = "Tablet de Ponto";
+      }
     }
     atualizarPrioridadeAutomatica();
     
@@ -4808,10 +4850,10 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
         feedbackEl.innerHTML = `
           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 11px; display: flex; align-items: center; gap: 6px;">
             <i data-lucide="help-circle" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
-            <span>Nenhum equipamento cadastrado com o código <strong>"${rawCode}"</strong>. A OS será aberta como categoria geral.</span>
+            <span>Código lido: <strong>"${rawCode}"</strong> (não localizado no cadastro de equipamentos). A OS será aberta com a categoria selecionada.</span>
           </div>
         `;
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
       } else {
         feedbackEl.style.display = "none";
         feedbackEl.innerHTML = "";
@@ -4852,14 +4894,8 @@ function escanearQRCodeDeArquivo(event) {
           inputPatrimonio.value = decodedValue;
           aoDigitarCodigoPatrimonio(decodedValue);
         }
-        
-        const equipamentos = AppDatabase.getCollection("equipamentos") || [];
-        const eq = equipamentos.find(e => (e.codigo_patrimonio && e.codigo_patrimonio.toLowerCase() === decodedValue.toLowerCase()) || (e.id && e.id.toLowerCase() === decodedValue.toLowerCase()));
-        
-        if (eq) {
-          alert(`Equipamento detectado: [${eq.codigo_patrimonio}] ${eq.nome_equipamento}`);
-        } else {
-          alert(`Código lido: "${decodedValue}" (não cadastrado no banco de equipamentos).`);
+        if (navigator.vibrate) {
+          try { navigator.vibrate(100); } catch (e) {}
         }
       } else {
         alert("Não foi possível ler o QR Code a partir desta imagem. Certifique-se de que a foto esteja nítida, com boa iluminação e que o QR Code esteja focado.");
