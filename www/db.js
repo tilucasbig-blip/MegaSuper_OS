@@ -507,7 +507,7 @@ const AppDatabase = {
   },
 
   // Inclusão transacional do ponto de vista da interface: só atualiza o cache após confirmação do servidor.
-  // Usar em fluxos críticos como abertura de OS.
+  // Usar em fluxos críticos como abertura de OS e cadastro de Equipamentos.
   async insertDocConfirmed(collectionName, doc) {
     await this.persistInsert(collectionName, doc);
     const items = this.cache[collectionName] || (this.cache[collectionName] = []);
@@ -522,6 +522,10 @@ const AppDatabase = {
     }
     this.saveLocalCache();
     return doc;
+  },
+
+  async saveDoc(collectionName, doc) {
+    return await this.insertDocConfirmed(collectionName, doc);
   },
 
   // Adicionar documento localmente e sincronizar em segundo plano (para recursos não críticos).
