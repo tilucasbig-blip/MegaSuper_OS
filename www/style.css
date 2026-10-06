@@ -10,36 +10,36 @@
   --bg-secondary: #101622;
   --bg-tertiary: #1b2332;
   --bg-card: rgba(16, 22, 34, 0.75);
-  
+
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  
+
   --brand-color: #6366f1;
   --brand-color-rgb: 99, 102, 241;
   --brand-hover: #4f46e5;
-  
+
   --status-aberta: #f59e0b;
   --status-andamento: #3b82f6;
   --status-pendente: #ec4899;
   --status-finalizada: #10b981;
   --status-cancelada: #ef4444;
   --status-aprovacao: #a855f7;
-  
+
   --border-color: rgba(255, 255, 255, 0.06);
   --border-hover: rgba(99, 102, 241, 0.3);
   --glass-border: rgba(255, 255, 255, 0.05);
-  
+
   --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 12px 24px -4px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 20px 40px -8px rgba(0, 0, 0, 0.8);
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
-  
+
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-full: 9999px;
-  
+
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -69,13 +69,16 @@ body {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--bg-tertiary);
   border-radius: var(--radius-full);
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--brand-color);
 }
@@ -97,12 +100,13 @@ body {
   min-height: 100dvh;
   padding: 20px;
   background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 40%);
+    radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 40%);
 }
 
 html.has-saved-session #login-container {
   display: none !important;
 }
+
 html.has-saved-session #app {
   display: flex !important;
 }
@@ -225,6 +229,7 @@ html.has-saved-session #app {
   background: linear-gradient(135deg, var(--status-cancelada), #b91c1c);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
+
 .btn-danger:hover {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
 }
@@ -233,6 +238,7 @@ html.has-saved-session #app {
   background: linear-gradient(135deg, var(--status-finalizada), #047857);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
+
 .btn-success:hover {
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
 }
@@ -246,14 +252,20 @@ html.has-saved-session #app {
   font-size: 12px;
 }
 
-.login-divider::before, .login-divider::after {
+.login-divider::before,
+.login-divider::after {
   content: '';
   flex: 1;
   border-bottom: 1px solid var(--border-color);
 }
 
-.login-divider:not(:empty)::before { margin-right: .5em; }
-.login-divider:not(:empty)::after { margin-left: .5em; }
+.login-divider:not(:empty)::before {
+  margin-right: .5em;
+}
+
+.login-divider:not(:empty)::after {
+  margin-left: .5em;
+}
 
 .quick-profiles {
   display: grid;
@@ -314,9 +326,23 @@ html.has-saved-session #app {
   letter-spacing: 0.5px;
 }
 
-.role-badge.diretor { background-color: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-.role-badge.ti { background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-.role-badge.usuario { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.role-badge.diretor {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.role-badge.ti {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.role-badge.usuario {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
 
 .sim-switcher {
   display: flex;
@@ -484,7 +510,8 @@ html.has-saved-session #app {
   transition: all var(--transition-fast);
 }
 
-.nav-link:hover, .nav-link.active {
+.nav-link:hover,
+.nav-link.active {
   color: var(--text-primary);
   background-color: rgba(255, 255, 255, 0.04);
 }
@@ -553,11 +580,30 @@ html.has-saved-session #app {
   font-size: 20px;
 }
 
-.stat-icon.pending { background: rgba(245, 158, 11, 0.12); color: var(--status-aberta); }
-.stat-icon.progress { background: rgba(59, 130, 246, 0.12); color: var(--status-andamento); }
-.stat-icon.done { background: rgba(16, 185, 129, 0.12); color: var(--status-finalizada); }
-.stat-icon.danger { background: rgba(239, 68, 68, 0.12); color: var(--status-cancelada); }
-.stat-icon.approval { background: rgba(168, 85, 247, 0.12); color: var(--status-aprovacao); }
+.stat-icon.pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--status-aberta);
+}
+
+.stat-icon.progress {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--status-andamento);
+}
+
+.stat-icon.done {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--status-finalizada);
+}
+
+.stat-icon.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--status-cancelada);
+}
+
+.stat-icon.approval {
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--status-aprovacao);
+}
 
 .stat-details h3 {
   font-size: 28px;
@@ -700,16 +746,56 @@ html.has-saved-session #app {
   letter-spacing: 0.2px;
 }
 
-.badge.status-aberta { background-color: rgba(245, 158, 11, 0.1); color: var(--status-aberta); border: 1px solid rgba(245, 158, 11, 0.2); }
-.badge.status-andamento { background-color: rgba(59, 130, 246, 0.1); color: var(--status-andamento); border: 1px solid rgba(59, 130, 246, 0.2); }
-.badge.status-pendente { background-color: rgba(236, 72, 153, 0.1); color: var(--status-pendente); border: 1px solid rgba(236, 72, 153, 0.2); }
-.badge.status-finalizada { background-color: rgba(16, 185, 129, 0.1); color: var(--status-finalizada); border: 1px solid rgba(16, 185, 129, 0.2); }
-.badge.status-cancelada { background-color: rgba(239, 68, 68, 0.1); color: var(--status-cancelada); border: 1px solid rgba(239, 68, 68, 0.2); }
-.badge.status-aprovacao { background-color: rgba(168, 85, 247, 0.1); color: var(--status-aprovacao); border: 1px solid rgba(168, 85, 247, 0.2); }
+.badge.status-aberta {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--status-aberta);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
 
-.badge.priority-alta { background-color: rgba(239, 68, 68, 0.1); color: var(--status-cancelada); }
-.badge.priority-media { background-color: rgba(245, 158, 11, 0.1); color: var(--status-aberta); }
-.badge.priority-baixa { background-color: rgba(16, 185, 129, 0.1); color: var(--status-finalizada); }
+.badge.status-andamento {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--status-andamento);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.badge.status-pendente {
+  background-color: rgba(236, 72, 153, 0.1);
+  color: var(--status-pendente);
+  border: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+.badge.status-finalizada {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--status-finalizada);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge.status-cancelada {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--status-cancelada);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge.status-aprovacao {
+  background-color: rgba(168, 85, 247, 0.1);
+  color: var(--status-aprovacao);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.badge.priority-alta {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--status-cancelada);
+}
+
+.badge.priority-media {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--status-aberta);
+}
+
+.badge.priority-baixa {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--status-finalizada);
+}
 
 /* OS List View (Alternate/Mobile Cards) */
 .os-cards-list {
@@ -848,7 +934,7 @@ html.has-saved-session #app {
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
   z-index: 1000;
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
   transform: translateY(100%);
   transition: transform var(--transition-normal);
   display: flex;
@@ -1002,10 +1088,11 @@ html.has-saved-session #app {
   max-height: 150px;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.chat-media-preview img, .chat-media-preview video {
+.chat-media-preview img,
+.chat-media-preview video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1127,14 +1214,14 @@ html.has-saved-session #app {
 
 .notif-item {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   font-size: 12px;
   cursor: pointer;
   transition: background var(--transition-fast);
 }
 
 .notif-item:hover {
-  background-color: rgba(255,255,255,0.02);
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .notif-item.unread {
@@ -1173,7 +1260,7 @@ html.has-saved-session #app {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background-color: rgba(255,255,255,0.02);
+  background-color: rgba(255, 255, 255, 0.02);
   border-radius: var(--radius-sm);
   font-size: 12px;
 }
@@ -1224,13 +1311,25 @@ html.has-saved-session #app {
 
 /* Animations */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* Print Stylesheet */
@@ -1240,10 +1339,18 @@ html.has-saved-session #app {
     color: #000 !important;
     font-size: 12pt;
   }
-  
-  #app, .sim-bar, .main-header, .sidebar, .tab-bar, 
-  .chat-container-panel, .btn, .modal-overlay, 
-  .chat-input-area, .notification-panel, .bottom-sheet,
+
+  #app,
+  .sim-bar,
+  .main-header,
+  .sidebar,
+  .tab-bar,
+  .chat-container-panel,
+  .btn,
+  .modal-overlay,
+  .chat-input-area,
+  .notification-panel,
+  .bottom-sheet,
   .no-print {
     display: none !important;
   }
@@ -1373,8 +1480,8 @@ html.has-saved-session #app {
   min-height: 100vh;
   width: 100%;
   background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%),
-              #090d16;
+    radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%),
+    #090d16;
   padding: 20px;
   position: fixed;
   top: 0;
@@ -1511,11 +1618,11 @@ html.has-saved-session #app {
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.checkbox-container:hover input ~ .checkmark {
+.checkbox-container:hover input~.checkmark {
   border-color: var(--brand-color);
 }
 
-.checkbox-container input:checked ~ .checkmark {
+.checkbox-container input:checked~.checkmark {
   background-color: var(--brand-color);
   border-color: var(--brand-color);
 }
@@ -1526,7 +1633,7 @@ html.has-saved-session #app {
   display: none;
 }
 
-.checkbox-container input:checked ~ .checkmark:after {
+.checkbox-container input:checked~.checkmark:after {
   display: block;
 }
 
@@ -1592,6 +1699,7 @@ html.has-saved-session #app {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1624,7 +1732,7 @@ html.has-saved-session #app {
     overflow: hidden !important;
   }
 
-  .content-body.dashboard-layout > .panel {
+  .content-body.dashboard-layout>.panel {
     flex: 1 !important;
     min-height: 0 !important;
     display: flex !important;
@@ -1658,6 +1766,7 @@ html.has-saved-session #app {
 }
 
 @media (max-width: 768px) {
+
   /* Habilita o botão do menu Hamburguer */
   .mobile-only {
     display: flex !important;
@@ -1683,7 +1792,8 @@ html.has-saved-session #app {
   }
 
   .user-info-text {
-    display: none !important; /* Oculta textos longos do perfil na barra superior */
+    display: none !important;
+    /* Oculta textos longos do perfil na barra superior */
   }
 
   .user-profile-widget {
@@ -1746,7 +1856,8 @@ html.has-saved-session #app {
 
   /* Permite rolagem e evita encolhimento da tela de login com o teclado aberto */
   .login-container {
-    display: block; /* Sem flexbox no mobile para evitar oscilacoes de altura */
+    display: block;
+    /* Sem flexbox no mobile para evitar oscilacoes de altura */
     position: relative;
     width: 100%;
     height: auto;
@@ -1761,7 +1872,8 @@ html.has-saved-session #app {
 
   .login-card {
     padding: 24px 20px !important;
-    margin: 0 auto !important; /* Centraliza horizontalmente */
+    margin: 0 auto !important;
+    /* Centraliza horizontalmente */
     max-width: 100% !important;
   }
 
@@ -1840,4 +1952,3 @@ html.has-saved-session #app {
     height: 450px !important;
   }
 }
-
