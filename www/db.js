@@ -77,12 +77,7 @@ const MOCK_ESTOQUE_FALLBACK = [
   { id: "est_suporte", nome_material: "Suporte Monitor de Mesa", quantidade_atual: 6, estoque_minimo: 2, valor_unitario: 89.90 }
 ];
 
-const MOCK_EQUIPAMENTOS_FALLBACK = [
-  { id: "eq_comp_checkout_01", nome_equipamento: "Computador Checkout 01", codigo_patrimonio: "PAT-COMP-01", loja_id: "loj_mega_maurilandia", loja: "Mega Maurilândia", dono: "Frente de Caixa 01", usuario: "tecnico", marca: "Dell", modelo: "OptiPlex 3080", numero_serie: "DELL-SER-992", numero_lote: "Lote Caixa 2024", valor_estimado: 3500.00, status: "ativo" },
-  { id: "eq_hp_p1102_01", nome_equipamento: "Impressora HP P1102", codigo_patrimonio: "PAT-HP1102-01", loja_id: "loj_mega_porteirao", loja: "Mega Porteirão", dono: "Faturamento / João Silva", usuario: "tecnico", marca: "HP", modelo: "LaserJet P1102", numero_serie: "HP-77698536", numero_lote: "Lote Faturamento", valor_estimado: 1200.00, status: "ativo" },
-  { id: "eq_balanca_01", nome_equipamento: "Balança Checkout 02", codigo_patrimonio: "PAT-BAL-01", loja_id: "loj_mega_maurilandia", loja: "Mega Maurilândia", dono: "Frente de Caixa 02", usuario: "tecnico", marca: "Toledo", modelo: "Prix 3 Fit", numero_serie: "TOL-SER-771", numero_lote: "Lote Balanças 2023", valor_estimado: 1850.00, status: "ativo" },
-  { id: "eq_servidor_01", nome_equipamento: "Servidor de Banco e Aplicação", codigo_patrimonio: "PAT-SRV-01", loja_id: "loj_mega_maurilandia", loja: "Corporativo / TI", dono: "TI Central", usuario: "tecnico", marca: "Dell", modelo: "PowerEdge R440", numero_serie: "DELL-SRV-2022", numero_lote: "Lote Datacenter", valor_estimado: 18500.00, status: "ativo" }
-];
+const MOCK_EQUIPAMENTOS_FALLBACK = [];
 
 const MOCK_OS_FALLBACK = [];
 const MOCK_NOTIFICACOES_FALLBACK = [];
@@ -218,7 +213,7 @@ const AppDatabase = {
         password_reset_requests: this.cache.password_reset_requests || [],
         equipamentos: this.cache.equipamentos
       };
-      localStorage.setItem("app_os_db_cache_v7", JSON.stringify(serialized));
+      localStorage.setItem("app_os_db_cache_v8", JSON.stringify(serialized));
     } catch (e) {
       console.warn("Erro ao salvar cache local no localStorage:", e);
     }
@@ -227,13 +222,13 @@ const AppDatabase = {
   loadLocalCache() {
     try {
       // Remove chaves antigas de cache para limpar qualquer vestígio de dados acumulados
-      ["app_os_db_cache", "app_os_db_cache_v1", "app_os_db_cache_v2", "app_os_db_cache_v3", "app_os_db_cache_v4", "app_os_db_cache_v5", "app_os_db_cache_v6"].forEach(k => localStorage.removeItem(k));
+      ["app_os_db_cache", "app_os_db_cache_v1", "app_os_db_cache_v2", "app_os_db_cache_v3", "app_os_db_cache_v4", "app_os_db_cache_v5", "app_os_db_cache_v6", "app_os_db_cache_v7"].forEach(k => localStorage.removeItem(k));
       
       if (localStorage.getItem("app_os_session_uid") === "usr_usuario") {
         localStorage.removeItem("app_os_session_uid");
       }
 
-      const saved = localStorage.getItem("app_os_db_cache_v7");
+      const saved = localStorage.getItem("app_os_db_cache_v8");
       if (saved) {
         const parsed = JSON.parse(saved);
         Object.keys(parsed).forEach(k => {
@@ -362,10 +357,7 @@ const AppDatabase = {
             this.cache.password_reset_requests = [...data, ...pendingLocal];
           }
           else if (col === "equipamentos") {
-            const serverIds = new Set(data.map(d => String(d.id)));
-            const currentLocal = this.cache.equipamentos || [];
-            const pendingLocal = currentLocal.filter(l => !serverIds.has(String(l.id)));
-            this.cache.equipamentos = [...data, ...pendingLocal];
+            this.cache.equipamentos = data || [];
           }
           else if (col === "os") {
             const serverIds = new Set(data.map(d => String(d.id)));
@@ -406,8 +398,8 @@ const AppDatabase = {
       if (!hadEstoque && (!this.cache.estoque || this.cache.estoque.length === 0)) {
         this.cache.estoque = MOCK_ESTOQUE_FALLBACK;
       }
-      if (!hadEquipamentos && (!this.cache.equipamentos || this.cache.equipamentos.length === 0)) {
-        this.cache.equipamentos = MOCK_EQUIPAMENTOS_FALLBACK;
+      if (!this.cache.equipamentos) {
+        this.cache.equipamentos = [];
       }
       if (!hadOS && (!this.cache.os || this.cache.os.length === 0)) {
         this.cache.os = MOCK_OS_FALLBACK;
@@ -434,8 +426,8 @@ const AppDatabase = {
     if (!this.cache.estoque || this.cache.estoque.length === 0) {
       this.cache.estoque = MOCK_ESTOQUE_FALLBACK;
     }
-    if (!this.cache.equipamentos || this.cache.equipamentos.length === 0) {
-      this.cache.equipamentos = MOCK_EQUIPAMENTOS_FALLBACK;
+    if (!this.cache.equipamentos) {
+      this.cache.equipamentos = [];
     }
     if (!this.cache.os || this.cache.os.length === 0) {
       this.cache.os = MOCK_OS_FALLBACK;
