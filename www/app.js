@@ -21,7 +21,7 @@ const CARGOS = [
   { cargo: "Compras", role: "usuario" },
   { cargo: "Técnico de TI", role: "ti" },
   { cargo: "Diretor", role: "diretor" },
-  { cargo: "Diretoria", role: "diretor" }
+  { cargo: "Diretoria", role: "usuario" }
 ];
 
 const LISTA_TIPOS_EQUIPAMENTOS = [
@@ -1626,9 +1626,11 @@ function renderUsuarios() {
         <h1 style="font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Gerenciar Usuários</h1>
         <p style="color: var(--text-secondary); font-size: 14px;">Cadastro, cargos e redefinição de senhas com auditoria</p>
       </div>
+      ${(currentUser && (currentUser.role === 'diretor' || currentUser.role === 'ti')) ? `
       <button class="btn" style="width: auto;" onclick="abrirModal('modal-criar-usuario')">
         <i data-lucide="user-plus"></i> Novo Usuário
       </button>
+      ` : ''}
     </div>
 
     <!-- Abas de Gerenciamento -->
@@ -2765,6 +2767,10 @@ function marcarTodasLidas() {
 
 async function criarNovoUsuario(e) {
   e.preventDefault();
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para cadastrar usuários.");
+    return;
+  }
   
   const nome = document.getElementById("user-new-nome").value.trim();
   const usuario = document.getElementById("user-new-usuario").value.trim();
@@ -2855,6 +2861,10 @@ async function criarNovoUsuario(e) {
 }
 
 function excluirUsuarioSimulado(uid) {
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para excluir usuários.");
+    return;
+  }
   const user = AppDatabase.getDoc("users", uid, "uid") || AppDatabase.getDoc("users", uid, "id");
   if (!user) return;
   
@@ -2884,6 +2894,10 @@ function excluirUsuarioSimulado(uid) {
 }
 
 function abrirEditarUsuario(uid) {
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para editar usuários.");
+    return;
+  }
   const user = AppDatabase.getDoc("users", uid, "uid") || AppDatabase.getDoc("users", uid, "id");
   if (!user) return;
   
@@ -2931,6 +2945,10 @@ function abrirEditarUsuario(uid) {
 
 async function salvarEdicaoUsuario(e) {
   e.preventDefault();
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para salvar alterações de usuários.");
+    return;
+  }
   
   const uid = document.getElementById("user-edit-uid").value;
   const nome = document.getElementById("user-edit-nome").value.trim();
@@ -3977,6 +3995,8 @@ function renderEquipamentos() {
   const equipamentos = AppDatabase.getCollection("equipamentos") || [];
   const lojas = AppDatabase.getCollection("lojas") || [];
   
+  const isStaff = currentUser && (currentUser.role === 'diretor' || currentUser.role === 'ti');
+  
   let html = `
     <div class="view-header-sticky">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;">
@@ -3984,9 +4004,11 @@ function renderEquipamentos() {
           <h1 style="font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Cadastrar Equipamento</h1>
           <p style="color: var(--text-secondary); font-size: 14px;">Registro de equipamentos e controle patrimonial (QR Code)</p>
         </div>
+        ${isStaff ? `
         <button class="btn" style="width: auto;" onclick="abrirModal('modal-criar-equipamento')">
           <i data-lucide="plus-circle"></i> Novo Equipamento
         </button>
+        ` : ''}
       </div>
     </div>
 
@@ -4614,7 +4636,10 @@ function extrairEspecificacoesTecnicasForm(prefixo = "eq-") {
 
 async function criarNovoEquipamento(e) {
   e.preventDefault();
-  if (!currentUser) return;
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para cadastrar novos equipamentos.");
+    return;
+  }
 
   const codigo = document.getElementById("eq-codigo").value.trim();
   const tipo = document.getElementById("eq-tipo").value;
@@ -4718,6 +4743,10 @@ async function criarNovoEquipamento(e) {
 }
 
 function abrirModalEditarEquipamento(id) {
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para editar equipamentos.");
+    return;
+  }
   const eqId = id || (currentSelectedEquipment ? currentSelectedEquipment.id : null);
   if (!eqId) return;
 
@@ -4772,7 +4801,10 @@ function abrirModalEditarEquipamento(id) {
 
 async function salvarEdicaoEquipamento(e) {
   e.preventDefault();
-  if (!currentUser) return;
+  if (!currentUser || (currentUser.role !== 'diretor' && currentUser.role !== 'ti')) {
+    alert("Apenas Diretores e Técnicos de TI possuem permissão para salvar alterações de equipamentos.");
+    return;
+  }
 
   const id = document.getElementById("edit-eq-id").value;
   const codigo = document.getElementById("edit-eq-codigo").value;
@@ -5107,6 +5139,11 @@ function abrirDetalhesEquipamento(id) {
   viabBar.style.width = Math.min(ratio, 100) + "%";
   viabBar.style.backgroundColor = viabilityColor;
   
+  const btnEdit = document.getElementById("btn-detalhes-editar-equipamento");
+  if (btnEdit) {
+    btnEdit.style.display = (currentUser && (currentUser.role === 'diretor' || currentUser.role === 'ti')) ? "inline-flex" : "none";
+  }
+
   abrirModal("modal-detalhes-equipamento");
   lucide.createIcons();
 }

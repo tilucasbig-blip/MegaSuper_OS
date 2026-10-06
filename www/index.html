@@ -837,7 +837,7 @@
       </div>
       <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary);">
         <button class="btn btn-secondary" style="width: auto; padding: 10px 20px;" onclick="fecharModal('modal-detalhes-equipamento')">Fechar</button>
-        <button class="btn btn-primary" onclick="abrirModalEditarEquipamento(currentSelectedEquipment ? currentSelectedEquipment.id : null)" style="width: auto; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+        <button id="btn-detalhes-editar-equipamento" class="btn btn-primary" onclick="abrirModalEditarEquipamento(currentSelectedEquipment ? currentSelectedEquipment.id : null)" style="width: auto; padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
           <i data-lucide="edit-3"></i> Editar Equipamento
         </button>
       </div>
@@ -1523,7 +1523,7 @@
   <!-- DB and JS files -->
   <script src="db.js?v=58"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <script src="app.js?v=104"></script>
+  <script src="app.js?v=105"></script>
 </body>
 
 </html>
