@@ -1404,6 +1404,43 @@ async function recarregarLogsManual() {
   }
 }
 
+async function limparHistoricoAuditLogs() {
+  if (!currentUser || currentUser.role !== 'diretor') {
+    alert("Apenas Diretores têm permissão para limpar o histórico de logs.");
+    return;
+  }
+  
+  const confirmacao = confirm("⚠️ ATENÇÃO: Deseja realmente APAGAR TODO O HISTÓRICO de logs de auditoria?\n\nEsta ação irá zerar todos os registros de auditoria anteriores no banco de dados e não poderá ser desfeita.");
+  if (!confirmacao) return;
+
+  const btn = document.getElementById("btn-limpar-logs");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 14px; height: 14px;"></i> Limpando...`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  try {
+    await AppDatabase.limparLogs();
+    
+    // Registra a ação de limpeza como o primeiro log novo
+    const currentUserId = currentUser.uid || currentUser.id;
+    await AppDatabase.registrarAuditLog(currentUserId, "logs_limpos", `O Diretor ${currentUser.nome} realizou a limpeza de todo o histórico anterior de auditoria.`);
+    
+    alert("Histórico de auditoria limpo com sucesso! Apenas as novas atividades serão registradas a partir de agora.");
+    renderLogs();
+  } catch (err) {
+    console.error("Erro ao limpar histórico de auditoria:", err);
+    alert("Erro ao limpar histórico: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Limpar Histórico`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+}
+
 function filtrarLogsNaTela(termo) {
   const clean = (termo || "").toLowerCase().trim();
   const items = document.querySelectorAll(".logs-list .log-item");
@@ -1435,7 +1472,6 @@ function renderLogs() {
     .filter(l => {
       if (!l || !l.acao) return false;
       const acaoLower = String(l.acao).toLowerCase();
-      const descLower = String(l.descricao || '').toLowerCase();
       
       // Oculta estritamente logs de teste ou ruído irrelevante
       if (acaoLower === 'teste') return false;
@@ -1497,7 +1533,8 @@ function renderLogs() {
         senha_aprovada: "Aprovação de Redefinição de Senha",
         senha_rejeitada: "Rejeição de Solicitação de Senha",
         equipamento_cadastrado: "Cadastro de Equipamento",
-        equipamento_editado: "Edição de Equipamento"
+        equipamento_editado: "Edição de Equipamento",
+        logs_limpos: "Limpeza de Histórico de Auditoria"
       };
       
       const acaoTexto = rotulosAcao[l.acao] || l.acao;
@@ -1521,17 +1558,24 @@ function renderLogs() {
     }).join("");
   }
 
+  const isDiretor = currentUser && currentUser.role === 'diretor';
+
   contentBody.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
       <div>
         <h1 style="font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Logs de Auditoria</h1>
         <p style="color: var(--text-secondary); font-size: 14px;">Trilha completa de auditoria e atividades operacionais de todos os usuários</p>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <input type="text" id="input-filtro-logs" class="input-control" placeholder="🔍 Filtrar logs por usuário, ação..." style="width: 260px; padding: 8px 12px; font-size: 13px;" oninput="filtrarLogsNaTela(this.value)">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="input-filtro-logs" class="input-control" placeholder="🔍 Filtrar logs por usuário, ação..." style="width: 240px; padding: 8px 12px; font-size: 13px;" oninput="filtrarLogsNaTela(this.value)">
         <button id="btn-refresh-logs" class="btn btn-secondary" style="width: auto; padding: 8px 16px;" onclick="recarregarLogsManual()">
           <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Atualizar Logs
         </button>
+        ${isDiretor ? `
+          <button id="btn-limpar-logs" class="btn" style="width: auto; padding: 8px 16px; background-color: #ef4444; color: white; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="limparHistoricoAuditLogs()">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Limpar Histórico
+          </button>
+        ` : ''}
       </div>
     </div>
 

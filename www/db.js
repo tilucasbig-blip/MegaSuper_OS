@@ -719,6 +719,21 @@ const AppDatabase = {
     this.registrarLog(acao, userId, "", descComFp);
   },
 
+  // Helper para limpar logs de auditoria e logs do sistema (Apenas Diretor)
+  async limparLogs() {
+    this.cache.audit_logs = [];
+    this.cache.logs = [];
+    this.saveLocalCache();
+    try {
+      if (supabaseClient) {
+        await supabaseClient.from("audit_logs").delete().neq("acao", "___dummy___");
+        await supabaseClient.from("logs").delete().neq("acao", "___dummy___");
+      }
+    } catch (err) {
+      console.warn("Aviso ao limpar logs no Supabase:", err);
+    }
+  },
+
   // Helper para criar uma notificação
   criarNotificacao(userId, mensagem) {
     const notif = {
