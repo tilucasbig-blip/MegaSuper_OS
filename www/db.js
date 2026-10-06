@@ -375,7 +375,11 @@ const AppDatabase = {
           else if (col === "logs") {
             const serverIds = new Set(data.map(d => String(d.id)));
             const currentLocal = this.cache.logs || [];
-            const pendingLocal = currentLocal.filter(l => !l._synced && !serverIds.has(String(l.id)));
+            const pendingLocal = currentLocal.filter(l => {
+              if (serverIds.has(String(l.id))) return false;
+              const lTime = l.data || l.data_hora || l.created_at;
+              return !data.some(d => d.acao === l.acao && (d.data === lTime || d.data_hora === lTime));
+            });
             this.cache.logs = [...data, ...pendingLocal];
           }
           else if (col === "notificacoes") this.cache.notificacoes = data;
@@ -383,7 +387,11 @@ const AppDatabase = {
           else if (col === "audit_logs") {
             const serverIds = new Set(data.map(d => String(d.id)));
             const currentLocal = this.cache.audit_logs || [];
-            const pendingLocal = currentLocal.filter(l => !l._synced && !serverIds.has(String(l.id)));
+            const pendingLocal = currentLocal.filter(l => {
+              if (serverIds.has(String(l.id))) return false;
+              const lTime = l.data_hora || l.data || l.created_at;
+              return !data.some(d => d.acao === l.acao && (d.data_hora === lTime || d.data === lTime));
+            });
             this.cache.audit_logs = [...data, ...pendingLocal];
           }
           else if (col === "password_reset_requests") {
@@ -786,23 +794,56 @@ const AppDatabase = {
     }
 
     if (collectionName === "logs") {
-      payload = {
-        acao: payload.acao,
+      const timestamp = payload.data || payload.data_hora || new Date().toISOString();
+      let logPayload = {
+        acao: String(payload.acao || "Ação do Sistema"),
         feito_por: String(payload.feito_por || payload.usuario_id || payload.user_id || "Sistema"),
         os_id: payload.os_id ? String(payload.os_id) : null,
-        data: payload.data || new Date().toISOString()
+        data: timestamp
       };
+
+      let insertRes = await supabaseClient.from("logs").insert([logPayload]).select();
+      if (insertRes.error && (insertRes.error.message.includes("violates foreign key") || insertRes.error.code === "23503")) {
+        logPayload.feito_por = null;
+        insertRes = await supabaseClient.from("logs").insert([logPayload]).select();
+      }
+      if (insertRes.error) {
+        console.warn("Aviso ao persistir logs no Supabase:", insertRes.error);
+      }
+      return insertRes.data && insertRes.data[0] ? insertRes.data[0] : logPayload;
     } else if (collectionName === "audit_logs") {
       const fp = window.clientFingerprint || {};
-      payload = {
-        usuario_id: payload.usuario_id ? String(payload.usuario_id) : (payload.feito_por ? String(payload.feito_por) : null),
+      const timestamp = payload.data_hora || payload.data || new Date().toISOString();
+      const rawUserId = payload.usuario_id || payload.feito_por || null;
+      
+      let auditPayload = {
+        usuario_id: rawUserId ? String(rawUserId) : null,
         acao: String(payload.acao || "Ação do Sistema"),
         descricao: payload.descricao ? String(payload.descricao) : String(payload.acao || ""),
         ip: payload.ip || fp.ip || "127.0.0.1",
         dispositivo: payload.dispositivo || fp.dispositivo || "Navegador Web",
-        // No banco real a coluna chama-se data_hora
-        data_hora: payload.data_hora || payload.data || new Date().toISOString()
+        data_hora: timestamp
       };
+
+      let insertRes = await supabaseClient.from("audit_logs").insert([auditPayload]).select();
+      
+      // Se a coluna no banco chama-se 'data' em vez de 'data_hora'
+      if (insertRes.error && (insertRes.error.message.includes("data_hora") || insertRes.error.code === "PGRST204" || insertRes.error.code === "42703")) {
+        delete auditPayload.data_hora;
+        auditPayload.data = timestamp;
+        insertRes = await supabaseClient.from("audit_logs").insert([auditPayload]).select();
+      }
+      
+      // Se a foreign key em usuario_id falhar
+      if (insertRes.error && (insertRes.error.message.includes("violates foreign key") || insertRes.error.code === "23503")) {
+        auditPayload.usuario_id = null;
+        insertRes = await supabaseClient.from("audit_logs").insert([auditPayload]).select();
+      }
+
+      if (insertRes.error) {
+        console.warn("Aviso ao persistir audit_logs no Supabase:", insertRes.error);
+      }
+      return insertRes.data && insertRes.data[0] ? insertRes.data[0] : auditPayload;
     } else if (collectionName === "users") {
       if (payload.uid) {
         payload.id = payload.uid;

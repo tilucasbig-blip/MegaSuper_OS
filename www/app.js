@@ -1487,7 +1487,11 @@ function renderLogs() {
         login_falha: "Tentativa de Login Falhou",
         login_bloqueado: "Tentativa de Login Bloqueada",
         conta_bloqueada_temp: "Conta Bloqueada Temporariamente",
+        usuario_criado: "Criação de Usuário",
+        usuario_excluido: "Exclusão de Usuário",
+        usuario_editado: "Edição de Usuário",
         excluir_estoque: "Exclusão de Item no Estoque",
+        entrada_estoque: "Entrada de Estoque",
         solicitacao_senha: "Solicitação de Senha",
         senha_alterada_obrigatoria: "Redefinição de Senha Obrigatória",
         senha_aprovada: "Aprovação de Redefinição de Senha",
@@ -2762,6 +2766,7 @@ async function criarNovoUsuario(e) {
     
     AppDatabase.insertDoc("users", newUser);
     if (currentUserId) {
+      AppDatabase.registrarAuditLog(currentUserId, "usuario_criado", `Criou o usuário "${nome}" (@${usuario}) com cargo ${cargo}${loja ? ' para a loja ' + loja : ''}`);
       AppDatabase.registrarLog(`Criou usuário: ${nome} (${cargo})${loja ? ' para a loja ' + loja : ''}`, currentUserId);
     }
     
@@ -2802,6 +2807,7 @@ function excluirUsuarioSimulado(uid) {
   
   AppDatabase.deleteDoc("users", targetId);
   if (currentUser) {
+    AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "usuario_excluido", `Excluiu o usuário "${user.nome}" (@${user.usuario})`);
     AppDatabase.registrarLog(`Excluiu usuário: ${user.nome} (@${user.usuario})`, currentUser.uid || currentUser.id);
   }
   
@@ -2900,6 +2906,7 @@ async function salvarEdicaoUsuario(e) {
     
     AppDatabase.updateDoc("users", user.uid || user.id, updates);
     if (currentUser) {
+      AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "usuario_editado", `Editou o usuário "${nome}" (@${usuario}) - Cargo: ${cargo}, Status: ${ativo ? 'Ativo' : 'Inativo'}`);
       AppDatabase.registrarLog(`Editou usuário: ${nome} (${cargo})${loja ? ' para a loja ' + loja : ''} - Status: ${ativo ? 'Ativo' : 'Inativo'}`, currentUser.uid || currentUser.id);
     }
     
