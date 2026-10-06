@@ -300,24 +300,6 @@ const AppDatabase = {
       }
     }
 
-    // Reenvia logs que ficaram só no navegador (ex.: sem conexão). Uma tentativa por sessão para cada registro.
-    this._flushTried = this._flushTried || new Set();
-    const validUserIds = new Set((this.cache.users || []).map(u => String(u.id || u.uid)));
-    const flushJobs = [];
-    ["logs", "audit_logs"].forEach(colName => {
-      (this.cache[colName] || []).forEach(item => {
-        if (item._synced || this._flushTried.has(item.id)) return;
-        if (colName === "logs" && !validUserIds.has(String(item.feito_por || item.usuario_id))) return;
-        this._flushTried.add(item.id);
-        flushJobs.push(
-          this.persistInsert(colName, item)
-            .then(() => { item._synced = true; })
-            .catch(e => console.warn(`Reenvio de ${colName} falhou:`, e.message))
-        );
-      });
-    });
-    if (flushJobs.length) await Promise.all(flushJobs);
-
     const allCollections = [
       "users", "lojas", "estoque", "os", "os_materiais", 
       "os_mensagens", "logs", "notificacoes", "movimentacoes_estoque", 

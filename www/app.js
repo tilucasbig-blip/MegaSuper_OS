@@ -618,7 +618,6 @@ async function definirUsuarioAtual(uid) {
 
 async function logoutSimulado() {
   if (currentUser) {
-    AppDatabase.registrarLog("Efetuou logout do sistema", currentUser.uid);
     AppDatabase.registrarAuditLog(currentUser.uid, "logout", `Logout efetuado com sucesso`);
   }
   
