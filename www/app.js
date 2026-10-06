@@ -1458,7 +1458,22 @@ function renderLogs() {
     }
   });
 
-  const allLogs = Array.from(unifiedMap.values()).sort((a, b) => (b._time || 0) - (a._time || 0));
+  const allLogs = Array.from(unifiedMap.values())
+    .filter(l => {
+      if (!l || !l.acao) return false;
+      const acaoLower = String(l.acao).toLowerCase();
+      const descLower = String(l.descricao || '').toLowerCase();
+      const authorId = l.feito_por || l.usuario_id;
+      
+      // Oculta estritamente logs internos, de robô ou de sistema
+      if (acaoLower === 'teste') return false;
+      if (acaoLower === 'logout_inatividade' || descLower.includes('inatividade') || descLower.includes('expirada por inatividade')) return false;
+      if (acaoLower === 'login_falha' || acaoLower === 'login_bloqueado' || acaoLower === 'conta_bloqueada_temp') return false;
+      if (!authorId && !l.os_id) return false;
+      
+      return true;
+    })
+    .sort((a, b) => (b._time || 0) - (a._time || 0));
 
   let logsHTML = "";
   if (allLogs.length === 0) {
@@ -1466,7 +1481,7 @@ function renderLogs() {
       <div style="text-align: center; color: var(--text-muted); padding: 48px 0;">
         <i data-lucide="shield-check" style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.4; display: block; margin: 0 auto 12px;"></i>
         <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Nenhum registro de auditoria encontrado</p>
-        <p style="font-size: 12px; opacity: 0.7;">As atividades de chamados e ações de usuários serão registradas aqui em tempo real.</p>
+        <p style="font-size: 12px; opacity: 0.7;">As atividades operacionais de usuários e chamados serão registradas aqui em tempo real.</p>
       </div>
     `;
   } else {
