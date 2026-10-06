@@ -1422,11 +1422,7 @@ async function limparHistoricoAuditLogs() {
   try {
     await AppDatabase.limparLogs();
     
-    // Registra a ação de limpeza como o primeiro log novo
-    const currentUserId = currentUser.uid || currentUser.id;
-    await AppDatabase.registrarAuditLog(currentUserId, "logs_limpos", `O Diretor ${currentUser.nome} realizou a limpeza de todo o histórico anterior de auditoria.`);
-    
-    alert("Histórico de auditoria limpo com sucesso! Apenas as novas atividades serão registradas a partir de agora.");
+    alert("Histórico de auditoria limpo com sucesso!");
     renderLogs();
   } catch (err) {
     console.error("Erro ao limpar histórico de auditoria:", err);
@@ -1475,7 +1471,7 @@ function renderLogs() {
       const descLower = String(l.descricao || '').toLowerCase();
       
       // Oculta estritamente logs internos, robôs e expiração automática por inatividade
-      if (acaoLower === 'teste') return false;
+      if (acaoLower === 'teste' || acaoLower === 'logs_limpos') return false;
       if (acaoLower === 'logout_inatividade' || descLower.includes('inatividade') || descLower.includes('expirada por inatividade')) return false;
       if (acaoLower === 'login_falha' || acaoLower === 'login_bloqueado' || acaoLower === 'conta_bloqueada_temp') return false;
       return true;
