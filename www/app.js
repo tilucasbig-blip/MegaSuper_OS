@@ -4528,18 +4528,41 @@ function calcularPrioridadePorEquipamento(equipamento) {
   const eq = String(equipamento).trim().toLowerCase();
   
   // Prioridade Máxima (Alta):
-  // PDV, Sistema, Servidor, Internet, Balança, Equipamentos de Segurança Eletrônica
+  // PDV/CPU, PDV, CPU, Checkout, Caixa, Frente de Caixa, Sistema, Servidor, Internet, Balança, Balança de checkout, TEF, Pin Pad, Equipamentos de Segurança Eletrônica
   const prioridadeMaxima = [
+    "pdv/cpu",
+    "pdv / cpu",
     "pdv",
+    "cpu",
+    "checkout",
+    "frente de caixa",
+    "caixa",
+    "pin pad",
+    "pinpad",
+    "tef",
+    "sat/mfe",
+    "sat",
+    "mfe",
     "sistema",
+    "software",
     "servidor",
+    "server",
     "internet",
+    "link",
+    "modem",
     "balança",
     "balanca",
+    "balança de checkout",
+    "balanca de checkout",
     "equipamentos de segurança eletrônica",
     "equipamentos de seguranca eletronica",
     "segurança eletrônica",
-    "seguranca eletronica"
+    "seguranca eletronica",
+    "cftv",
+    "dvr",
+    "nvr",
+    "câmeras",
+    "cameras"
   ];
   
   if (prioridadeMaxima.some(item => eq === item || eq.includes(item))) {
@@ -4547,12 +4570,22 @@ function calcularPrioridadePorEquipamento(equipamento) {
   }
   
   // Prioridade Média:
-  // Impressora, Computador, Monitor, Central de Alarme
+  // Impressora, Computador, Monitor, Central de Alarme, Switch, Roteador, Nobreak
   const prioridadeMedia = [
     "impressora",
     "computador",
+    "pc",
+    "desktop",
+    "notebook",
     "monitor",
-    "central de alarme"
+    "tela",
+    "central de alarme",
+    "alarme",
+    "nobreak",
+    "estabilizador",
+    "switch",
+    "roteador",
+    "leitor"
   ];
   
   if (prioridadeMedia.some(item => eq === item || eq.includes(item))) {
@@ -4565,12 +4598,23 @@ function calcularPrioridadePorEquipamento(equipamento) {
 
 function atualizarPrioridadeAutomatica() {
   const eqEl = document.getElementById("os-equipamento");
+  const codPatrimonioInput = document.getElementById("os-codigo-patrimonio");
   const prioEl = document.getElementById("os-prioridade");
   const infoEl = document.getElementById("os-prioridade-badge-info");
-  if (!eqEl || !prioEl) return;
+  if (!prioEl) return;
   
-  const equipamento = eqEl.value;
-  const prioridade = calcularPrioridadePorEquipamento(equipamento);
+  const equipamento = (eqEl && eqEl.value) ? eqEl.value : "";
+  const codPatrimonio = (codPatrimonioInput && codPatrimonioInput.value) ? codPatrimonioInput.value.replace(/^Categoria Geral:\s*/i, '').trim() : "";
+  
+  // Determina a prioridade calculando sobre o equipamento selecionado ou código/categoria digitada
+  let prioridade = calcularPrioridadePorEquipamento(equipamento);
+  if (codPatrimonio) {
+    const prioByCode = calcularPrioridadePorEquipamento(codPatrimonio);
+    if (prioByCode === "Alta" || (prioByCode === "Média" && prioridade === "Baixa")) {
+      prioridade = prioByCode;
+    }
+  }
+  
   prioEl.value = prioridade;
   
   if (infoEl) {
@@ -4608,6 +4652,7 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
   }
   
   const cleanCode = rawCode.toLowerCase();
+  const cleanCategory = rawCode.replace(/^Categoria Geral:\s*/i, '').trim();
   const equipamentos = AppDatabase.getCollection("equipamentos") || [];
   
   // Localiza equipamento no banco/cache por código de patrimônio ou ID
@@ -4621,16 +4666,16 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
     
     // Assimilação Automática da Categoria
     const nameLower = (eq.nome_equipamento || "").toLowerCase();
-    if (nameLower.includes("impressora")) {
+    if (nameLower.includes("pdv") || nameLower.includes("cpu") || nameLower.includes("caixa") || nameLower.includes("checkout")) {
+      generalCategorySelect.value = "PDV/CPU";
+    } else if (nameLower.includes("impressora")) {
       generalCategorySelect.value = "Impressora";
     } else if (nameLower.includes("computador") || nameLower.includes("pc") || nameLower.includes("dell") || nameLower.includes("desktop") || nameLower.includes("notebook")) {
       generalCategorySelect.value = "Computador";
     } else if (nameLower.includes("monitor") || nameLower.includes("tela")) {
       generalCategorySelect.value = "Monitor";
     } else if (nameLower.includes("balança") || nameLower.includes("balanca")) {
-      generalCategorySelect.value = "Balança";
-    } else if (nameLower.includes("pdv") || nameLower.includes("caixa")) {
-      generalCategorySelect.value = "PDV";
+      generalCategorySelect.value = "Balança de checkout";
     } else if (nameLower.includes("servidor")) {
       generalCategorySelect.value = "Servidor";
     } else if (nameLower.includes("internet") || nameLower.includes("roteador") || nameLower.includes("switch") || nameLower.includes("modem")) {
@@ -4682,6 +4727,9 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
     }
   } else {
     if (hiddenIdEl) hiddenIdEl.value = "";
+    if (generalCategorySelect && cleanCategory) {
+      generalCategorySelect.value = cleanCategory;
+    }
     atualizarPrioridadeAutomatica();
     
     if (feedbackEl) {
@@ -4690,7 +4738,7 @@ function aoDigitarCodigoPatrimonio(codeTyped) {
         feedbackEl.innerHTML = `
           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 11px; display: flex; align-items: center; gap: 6px;">
             <i data-lucide="help-circle" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
-            <span>Nenhum equipamento cadastrado com o código <strong>"${rawCode}"</strong>. A OS será aberta sem vínculo de patrimônio específico.</span>
+            <span>Nenhum equipamento cadastrado com o código <strong>"${rawCode}"</strong>. A OS será aberta como categoria geral.</span>
           </div>
         `;
         lucide.createIcons();
