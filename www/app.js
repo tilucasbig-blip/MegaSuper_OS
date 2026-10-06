@@ -1472,9 +1472,12 @@ function renderLogs() {
     .filter(l => {
       if (!l || !l.acao) return false;
       const acaoLower = String(l.acao).toLowerCase();
+      const descLower = String(l.descricao || '').toLowerCase();
       
-      // Oculta estritamente logs de teste ou ruído irrelevante
+      // Oculta estritamente logs internos, robôs e expiração automática por inatividade
       if (acaoLower === 'teste') return false;
+      if (acaoLower === 'logout_inatividade' || descLower.includes('inatividade') || descLower.includes('expirada por inatividade')) return false;
+      if (acaoLower === 'login_falha' || acaoLower === 'login_bloqueado' || acaoLower === 'conta_bloqueada_temp') return false;
       return true;
     })
     .map(l => {
@@ -1490,7 +1493,10 @@ function renderLogs() {
       return { ...l, os_id: osId, _time: timeMs };
     })
     .filter(l => {
-      const key = l.id ? String(l.id) : `${l.acao}|${l.usuario_id || l.feito_por}|${Math.floor((l._time || 0) / 3000)}`;
+      // Deduplica logs com mesma ação e autor na janela de 10 segundos
+      const author = String(l.usuario_id || l.feito_por || 'sistema').toLowerCase();
+      const timeWindow = Math.floor((l._time || 0) / 10000);
+      const key = `${String(l.acao).trim().toLowerCase()}|${author}|${timeWindow}`;
       if (seenKeys.has(key)) return false;
       seenKeys.add(key);
       return true;
@@ -3916,12 +3922,7 @@ function resetarTimerInatividade() {
 
 async function deslogarPorInatividade() {
   if (currentUser) {
-    const userId = currentUser.uid;
     console.log("Inatividade detectada: efetuando logout automático.");
-    
-    // Registra log de auditoria
-    await AppDatabase.registrarAuditLog(userId, "logout_inatividade", "Sessão expirada por inatividade (30 minutos)");
-    
     alert("Sua sessão expirou por inatividade. Por favor, faça login novamente.");
     await executarLimpezaSessao();
     exibirTelaLogin();
