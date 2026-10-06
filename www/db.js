@@ -220,7 +220,7 @@ const AppDatabase = {
         password_reset_requests: this.cache.password_reset_requests || [],
         equipamentos: this.cache.equipamentos
       };
-      localStorage.setItem("app_os_db_cache_v6", JSON.stringify(serialized));
+      localStorage.setItem("app_os_db_cache_v7", JSON.stringify(serialized));
     } catch (e) {
       console.warn("Erro ao salvar cache local no localStorage:", e);
     }
@@ -228,14 +228,14 @@ const AppDatabase = {
 
   loadLocalCache() {
     try {
-      // Remove chaves antigas de cache para limpar qualquer vestígio de OSs antigas
-      ["app_os_db_cache", "app_os_db_cache_v1", "app_os_db_cache_v2", "app_os_db_cache_v3", "app_os_db_cache_v4", "app_os_db_cache_v5"].forEach(k => localStorage.removeItem(k));
+      // Remove chaves antigas de cache para limpar qualquer vestígio de dados acumulados
+      ["app_os_db_cache", "app_os_db_cache_v1", "app_os_db_cache_v2", "app_os_db_cache_v3", "app_os_db_cache_v4", "app_os_db_cache_v5", "app_os_db_cache_v6"].forEach(k => localStorage.removeItem(k));
       
       if (localStorage.getItem("app_os_session_uid") === "usr_usuario") {
         localStorage.removeItem("app_os_session_uid");
       }
 
-      const saved = localStorage.getItem("app_os_db_cache_v6");
+      const saved = localStorage.getItem("app_os_db_cache_v7");
       if (saved) {
         const parsed = JSON.parse(saved);
         Object.keys(parsed).forEach(k => {
