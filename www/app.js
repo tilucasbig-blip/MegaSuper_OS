@@ -1391,10 +1391,10 @@ async function recarregarLogsManual() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   try {
-    await AppDatabase.load(["logs", "audit_logs", "users", "os"]);
+    await AppDatabase.load(["audit_logs", "users", "os"]);
     renderLogs();
   } catch (e) {
-    console.error("Erro ao recarregar logs:", e);
+    console.error("Erro ao recarregar logs de auditoria:", e);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -1427,51 +1427,31 @@ function renderLogs() {
   const contentBody = document.getElementById("content-body");
   if (!contentBody) return;
 
-  const logsCol = AppDatabase.getCollection("logs") || [];
   const auditCol = AppDatabase.getCollection("audit_logs") || [];
   const users = AppDatabase.getCollection("users") || [];
 
-  // Consolidação e deduplicação precisa de logs e audit_logs
-  const unifiedMap = new Map();
-
-  [...logsCol, ...auditCol].forEach(item => {
-    if (!item) return;
-    const author = String(item.feito_por || item.usuario_id || "sistema").toLowerCase();
-    const rawTime = item.data || item.data_hora || item.created_at || "";
-    const timeMs = rawTime ? new Date(rawTime).getTime() : 0;
-    // Agrupa apenas se for a mesma ação, mesmo autor e ocorrido na mesma janela de 3 segundos
-    const timeWindow = Math.floor(timeMs / 3000);
-    const itemKey = `${String(item.acao).trim().toLowerCase()}|${author}|${timeWindow}`;
-
-    const existing = unifiedMap.get(itemKey);
-    if (!existing) {
-      unifiedMap.set(itemKey, { ...item, _time: timeMs });
-    } else {
-      // Mescla detalhes complementares
-      if (!existing.os_id && item.os_id) existing.os_id = item.os_id;
-      if ((!existing.descricao || existing.descricao === existing.acao) && item.descricao && item.descricao !== item.acao) {
-        existing.descricao = item.descricao;
-      }
-      if (item.data_hora && !existing.data_hora) existing.data_hora = item.data_hora;
-      if (item.data && !existing.data) existing.data = item.data;
-      if (timeMs > (existing._time || 0)) existing._time = timeMs;
-    }
-  });
-
-  const allLogs = Array.from(unifiedMap.values())
+  // Filtra e prepara logs de auditoria
+  const allLogs = auditCol
     .filter(l => {
       if (!l || !l.acao) return false;
       const acaoLower = String(l.acao).toLowerCase();
       const descLower = String(l.descricao || '').toLowerCase();
-      const authorId = l.feito_por || l.usuario_id;
       
-      // Oculta estritamente logs internos, de robô ou de sistema
+      // Oculta estritamente logs de teste ou ruído irrelevante
       if (acaoLower === 'teste') return false;
-      if (acaoLower === 'logout_inatividade' || descLower.includes('inatividade') || descLower.includes('expirada por inatividade')) return false;
-      if (acaoLower === 'login_falha' || acaoLower === 'login_bloqueado' || acaoLower === 'conta_bloqueada_temp') return false;
-      if (!authorId && !l.os_id) return false;
-      
       return true;
+    })
+    .map(l => {
+      const rawTime = l.data_hora || l.data || l.created_at || "";
+      const timeMs = rawTime ? new Date(rawTime).getTime() : 0;
+      
+      // Tenta extrair ID da OS se não tiver l.os_id explícito
+      let osId = l.os_id;
+      if (!osId && l.descricao) {
+        const match = l.descricao.match(/#([a-zA-Z0-9_\-]+)/);
+        if (match) osId = match[1];
+      }
+      return { ...l, os_id: osId, _time: timeMs };
     })
     .sort((a, b) => (b._time || 0) - (a._time || 0));
 
@@ -1486,7 +1466,7 @@ function renderLogs() {
     `;
   } else {
     logsHTML = allLogs.map(l => {
-      const authorId = l.feito_por || l.usuario_id;
+      const authorId = l.usuario_id || l.feito_por;
       const userObj = users.find(u => 
         String(u.uid) === String(authorId) || 
         String(u.id) === String(authorId) || 
@@ -1494,32 +1474,37 @@ function renderLogs() {
         (u.email && u.email.toLowerCase() === String(authorId).toLowerCase())
       );
       
-      const userName = userObj ? userObj.nome : (authorId ? "Usuário / " + authorId : "Sistema");
-      const userRole = userObj ? (userObj.cargo || userObj.role || "USR").toUpperCase() : "AUDIT";
-      const rawDate = l.data || l.data_hora || l.created_at;
+      const userName = userObj ? userObj.nome : (authorId ? "Usuário / " + authorId : "Sistema / Operação");
+      const userRole = userObj ? (userObj.cargo || userObj.role || "USR").toUpperCase() : "AUDITORIA";
+      const rawDate = l.data_hora || l.data || l.created_at;
       const dateObj = rawDate ? new Date(rawDate) : null;
       const dataF = (dateObj && !isNaN(dateObj)) ? dateObj.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "Data N/A";
       const esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      
       const rotulosAcao = {
-        login: "Efetuou login no sistema",
-        logout: "Efetuou logout do sistema",
-        login_falha: "Tentativa de login falhou",
-        login_bloqueado: "Tentativa de login bloqueada",
-        conta_bloqueada_temp: "Conta bloqueada temporariamente",
-        excluir_estoque: "Excluiu item do estoque",
-        solicitacao_senha: "Criou solicitação de redefinição de senha",
-        senha_alterada_obrigatoria: "Redefiniu senha obrigatória com sucesso",
-        senha_rejeitada: "Rejeitou solicitação de senha"
+        login: "Login no Sistema",
+        logout: "Logout do Sistema",
+        login_falha: "Tentativa de Login Falhou",
+        login_bloqueado: "Tentativa de Login Bloqueada",
+        conta_bloqueada_temp: "Conta Bloqueada Temporariamente",
+        excluir_estoque: "Exclusão de Item no Estoque",
+        solicitacao_senha: "Solicitação de Senha",
+        senha_alterada_obrigatoria: "Redefinição de Senha Obrigatória",
+        senha_aprovada: "Aprovação de Redefinição de Senha",
+        senha_rejeitada: "Rejeição de Solicitação de Senha",
+        equipamento_cadastrado: "Cadastro de Equipamento",
+        equipamento_editado: "Edição de Equipamento"
       };
+      
       const acaoTexto = rotulosAcao[l.acao] || l.acao;
-      const descricaoTexto = l.descricao && l.descricao !== l.acao ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">${esc(l.descricao)}</div>` : '';
+      const descricaoTexto = l.descricao && l.descricao !== l.acao ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">${esc(l.descricao)}</div>` : '';
 
       return `
         <div class="log-item" style="padding: 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
           <div style="flex: 1;">
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span class="log-action" style="font-weight: 700; color: var(--text-primary); font-size: 13px;">${esc(acaoTexto)}</span>
-              ${l.os_id ? `<span class="os-id-cell" style="cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(99, 102, 241, 0.1); color: var(--accent-color);" onclick="abrirOSDetails('${l.os_id}')">${esc(l.os_id)}</span>` : ''}
+              ${l.os_id ? `<span class="os-id-cell" style="cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(99, 102, 241, 0.1); color: var(--accent-color);" onclick="abrirOSDetails('${l.os_id}')">#${esc(l.os_id.replace(/^#/, ''))}</span>` : ''}
             </div>
             ${descricaoTexto}
           </div>
@@ -1548,7 +1533,7 @@ function renderLogs() {
 
     <div class="panel">
       <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="panel-title"><i data-lucide="terminal"></i> Trilha de Ações Executadas <span id="logs-count-badge">(${allLogs.length})</span></div>
+        <div class="panel-title"><i data-lucide="shield-check"></i> Trilha de Ações Executadas <span id="logs-count-badge">(${allLogs.length})</span></div>
       </div>
       <div class="logs-list" style="max-height: 70vh; overflow-y: auto;">
         ${logsHTML}
