@@ -726,8 +726,14 @@ const AppDatabase = {
     this.saveLocalCache();
     try {
       if (supabaseClient) {
-        await supabaseClient.from("audit_logs").delete().neq("acao", "___dummy___");
-        await supabaseClient.from("logs").delete().neq("acao", "___dummy___");
+        const { error: err1 } = await supabaseClient.from("audit_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        if (err1) {
+          await supabaseClient.from("audit_logs").delete().neq("acao", "___dummy___");
+        }
+        const { error: err2 } = await supabaseClient.from("logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        if (err2) {
+          await supabaseClient.from("logs").delete().neq("acao", "___dummy___");
+        }
       }
     } catch (err) {
       console.warn("Aviso ao limpar logs no Supabase:", err);
