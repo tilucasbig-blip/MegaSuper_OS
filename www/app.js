@@ -3203,9 +3203,14 @@ async function excluirMaterialEstoque(id, nomeMaterial) {
   }
   
   try {
-    AppDatabase.deleteDoc("estoque", id);
-    AppDatabase.registrarLog(`Excluiu material do estoque: ${nomeMaterial}`, currentUser.uid);
-    AppDatabase.registrarAuditLog(currentUser.uid, "excluir_estoque", `Excluiu o material "${nomeMaterial}" do inventário`);
+    await AppDatabase.persistDelete("estoque", id, "id");
+    const items = AppDatabase.getCollection("estoque") || [];
+    AppDatabase.cache.estoque = items.filter(e => String(e.id) !== String(id));
+    AppDatabase.saveLocalCache();
+    
+    const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
+    AppDatabase.registrarLog(`Excluiu material do estoque: ${nomeMaterial}`, currentUserId);
+    await AppDatabase.registrarAuditLog(currentUserId, "excluir_estoque", `Excluiu o material "${nomeMaterial}" do inventário`);
     
     alert(`Material "${nomeMaterial}" excluído com sucesso!`);
     renderEstoque();
@@ -3218,7 +3223,7 @@ async function excluirMaterialEstoque(id, nomeMaterial) {
 function abrirModalAdicionarEstoque() {
   const select = document.getElementById("estoque-item-select");
   if (select) {
-    const estoqueList = AppDatabase.getCollection("estoque");
+    const estoqueList = AppDatabase.getCollection("estoque") || [];
     select.innerHTML = `
       <option value="">-- Selecione o Item --</option>
       ${estoqueList.map(e => `<option value="${e.id}">${e.nome_material} (Qtd Atual: ${e.quantidade_atual})</option>`).join("")}
@@ -3258,63 +3263,90 @@ function alternarTipoCadastroEstoque(tipo) {
   }
 }
 
-function adicionarEstoqueItem(e) {
+async function adicionarEstoqueItem(e) {
   e.preventDefault();
   
   const tipo = document.getElementById("estoque-tipo-cadastro").value;
-  const qty = parseInt(document.getElementById("estoque-quantidade-adicionar").value);
+  const qty = parseInt(document.getElementById("estoque-quantidade-adicionar").value, 10) || 0;
+  if (qty <= 0) {
+    alert("Informe uma quantidade válida maior que zero.");
+    return;
+  }
   
   let nomeMaterial = "";
   let itemId = "";
   
-  if (tipo === "existente") {
-    itemId = document.getElementById("estoque-item-select").value;
-    if (!itemId) {
-      alert("Selecione um item do estoque!");
-      return;
-    }
-    const item = AppDatabase.getDoc("estoque", itemId, "id");
-    if (item) {
-      nomeMaterial = item.nome_material;
-      const novaQtd = item.quantidade_atual + qty;
-      AppDatabase.updateDoc("estoque", itemId, { quantidade_atual: novaQtd }, "id");
-    }
-  } else {
-    // Cadastrar Novo Produto
-    nomeMaterial = document.getElementById("estoque-novo-nome").value;
-    const price = parseFloat(document.getElementById("estoque-novo-preco").value);
-    const minQty = parseInt(document.getElementById("estoque-novo-minimo").value);
-    
-    itemId = "est_" + Math.random().toString(36).substr(2, 9);
-    
-    const novoItem = {
-      id: itemId,
-      nome_material: nomeMaterial,
-      quantidade_atual: qty,
-      estoque_minimo: minQty,
-      valor_unitario: price
-    };
-    
-    AppDatabase.insertDoc("estoque", novoItem);
+  const submitBtn = e.target.querySelector("button[type='submit']");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Salvando...";
   }
-  
-  // Registrar log de movimentação de entrada
-  AppDatabase.insertDoc("movimentacoes_estoque", {
-    id: "mov_" + Math.random().toString(36).substr(2, 9),
-    nome_material: nomeMaterial,
-    quantidade: qty,
-    tipo: "entrada",
-    data: new Date().toISOString(),
-    os_id: ""
-  });
-  
-  AppDatabase.registrarLog(`Entrada de estoque: +${qty} ${nomeMaterial}`, currentUser.uid);
-  
-  fecharModal("modal-adicionar-estoque");
-  alert(`Entrada de estoque realizada com sucesso!`);
-  
-  // Re-renderiza a tela
-  navegarPara("estoque");
+
+  try {
+    if (tipo === "existente") {
+      itemId = document.getElementById("estoque-item-select").value;
+      if (!itemId) {
+        alert("Selecione um item do estoque!");
+        return;
+      }
+      const item = AppDatabase.getDoc("estoque", itemId, "id") || (AppDatabase.getCollection("estoque") || []).find(it => String(it.id) === String(itemId));
+      if (item) {
+        nomeMaterial = item.nome_material;
+        const qtdAtual = Number(item.quantidade_atual) || 0;
+        const novaQtd = qtdAtual + qty;
+        item.quantidade_atual = novaQtd;
+        
+        await AppDatabase.persistUpdate("estoque", item.id || itemId, { quantidade_atual: novaQtd }, "id");
+        AppDatabase.saveLocalCache();
+      }
+    } else {
+      // Cadastrar Novo Produto
+      nomeMaterial = document.getElementById("estoque-novo-nome").value.trim();
+      const price = parseFloat(document.getElementById("estoque-novo-preco").value) || 0;
+      const minQty = parseInt(document.getElementById("estoque-novo-minimo").value, 10) || 0;
+      
+      itemId = "est_" + Math.random().toString(36).substr(2, 9);
+      
+      const novoItem = {
+        id: itemId,
+        nome_material: nomeMaterial,
+        quantidade_atual: qty,
+        estoque_minimo: minQty,
+        valor_unitario: price
+      };
+      
+      await AppDatabase.insertDocConfirmed("estoque", novoItem);
+    }
+    
+    // Registrar log de movimentação de entrada
+    const movItem = {
+      id: "mov_" + Math.random().toString(36).substr(2, 9),
+      nome_material: nomeMaterial,
+      quantidade: qty,
+      tipo: "entrada",
+      data: new Date().toISOString(),
+      os_id: null
+    };
+    await AppDatabase.insertDocConfirmed("movimentacoes_estoque", movItem);
+    
+    const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
+    AppDatabase.registrarLog(`Entrada de estoque: +${qty} ${nomeMaterial}`, currentUserId);
+    await AppDatabase.registrarAuditLog(currentUserId, "estoque_entrada", `Entrada de +${qty} unidades de "${nomeMaterial}" no estoque.`);
+    
+    fecharModal("modal-adicionar-estoque");
+    alert(`Entrada de estoque realizada com sucesso! (+${qty} ${nomeMaterial})`);
+    
+    // Re-renderiza a tela com o estoque atualizado
+    renderEstoque();
+  } catch (err) {
+    console.error("Erro ao adicionar estoque:", err);
+    alert("Erro ao gravar entrada de estoque: " + err.message);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Adicionar ao Estoque";
+    }
+  }
 }
 
 

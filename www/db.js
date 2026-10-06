@@ -936,6 +936,18 @@ const AppDatabase = {
         payload.os_id = null;
       }
 
+      if (collectionName === "estoque") {
+        if (payload.quantidade_atual !== undefined) {
+          payload.quantidade_atual = parseInt(payload.quantidade_atual, 10) || 0;
+        }
+        if (payload.estoque_minimo !== undefined) {
+          payload.estoque_minimo = parseInt(payload.estoque_minimo, 10) || 0;
+        }
+        if (payload.valor_unitario !== undefined) {
+          payload.valor_unitario = parseFloat(payload.valor_unitario) || 0;
+        }
+      }
+
       if (Object.keys(payload).length > 0) {
         const { error } = await supabaseClient
           .from(collectionName)
