@@ -4076,12 +4076,16 @@ async function criarNovoEquipamento(e) {
     return;
   }
 
+  const selectedLojaObj = AppDatabase.getDoc("lojas", lojaId, "id") || (AppDatabase.getCollection("lojas") || []).find(l => String(l.id) === String(lojaId) || String(l.nome) === String(lojaId));
+  const lojaNome = selectedLojaObj ? selectedLojaObj.nome : lojaId;
+
   const newEq = {
     id: "eq_" + Math.random().toString(36).substr(2, 9),
     usuario: usuario || null,
     nome_equipamento: nome,
     codigo_patrimonio: patrimonio,
     loja_id: lojaId,
+    loja: lojaNome,
     dono: dono || null,
     marca: marca,
     modelo: modelo,

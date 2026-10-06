@@ -807,6 +807,18 @@ const AppDatabase = {
         status: payload.status || "pendente",
         solicitado_em: payload.solicitado_em || new Date().toISOString()
       };
+    } else if (collectionName === "equipamentos") {
+      if (payload.loja_id === "") payload.loja_id = null;
+      let insertRes = await supabaseClient.from("equipamentos").insert([payload]).select();
+      if (insertRes.error && (insertRes.error.message.includes("violates foreign key") || insertRes.error.code === "23503")) {
+        payload.loja_id = null;
+        insertRes = await supabaseClient.from("equipamentos").insert([payload]).select();
+      }
+      if (insertRes.error) {
+        console.error(`Falha ao inserir em equipamentos:`, insertRes.error);
+        throw new Error(`Não foi possível gravar equipamento: ${insertRes.error.message}`);
+      }
+      return insertRes.data && insertRes.data[0] ? insertRes.data[0] : payload;
     }
 
     const { data, error } = await supabaseClient.from(collectionName).insert([payload]).select();
