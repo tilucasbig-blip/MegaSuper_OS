@@ -2099,6 +2099,28 @@ function abrirOSDetails(osId) {
   
   document.getElementById("sheet-os-descricao").textContent = os.descricao;
   
+  // Alerta de Reabertura por Insatisfação se aplicável
+  const reabertoAlert = document.getElementById("sheet-os-reaberto-alert");
+  if (reabertoAlert) {
+    if (os.motivo_reabertura) {
+      reabertoAlert.style.display = "block";
+      const dataReabertura = os.reaberto_em ? DateTimeFormatFriendly(os.reaberto_em) : '';
+      reabertoAlert.innerHTML = `
+        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: #f59e0b; display: flex; align-items: flex-start; gap: 8px;">
+          <i data-lucide="alert-triangle" style="width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>Chamado Reaberto por Insatisfação:</strong>
+            <div style="color: var(--text-primary); margin-top: 2px;">"${os.motivo_reabertura}"</div>
+            ${dataReabertura ? `<div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Reaberto em ${dataReabertura}</div>` : ''}
+          </div>
+        </div>
+      `;
+    } else {
+      reabertoAlert.style.display = "none";
+      reabertoAlert.innerHTML = "";
+    }
+  }
+
   // Renderiza Materiais
   renderMaterialsList(os);
   
@@ -2213,7 +2235,28 @@ function renderOSActionsButtons(os) {
   actionsContainer.innerHTML = "";
   
   if (os.status === 'Finalizada') {
-    actionsContainer.innerHTML = "";
+    const isOwner = currentUser && (
+      String(os.criado_por) === String(currentUser.uid || currentUser.id) ||
+      String(os.criado_por) === String(currentUser.usuario) ||
+      (Array.isArray(os.usuarios_envolvidos) && os.usuarios_envolvidos.includes(String(currentUser.uid || currentUser.id)))
+    );
+    const isStaff = currentUser && (currentUser.role === 'diretor' || currentUser.role === 'ti');
+    
+    if (isOwner || isStaff) {
+      actionsContainer.innerHTML = `
+        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); padding: 14px; border-radius: var(--radius-sm); text-align: center;">
+          <p style="font-size: 13px; color: var(--text-primary); margin-bottom: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <i data-lucide="help-circle" style="width: 16px; height: 16px; color: #f59e0b;"></i> Não ficou satisfeito com a resolução?
+          </p>
+          <button type="button" class="btn" onclick="abrirModalReabrirOS('${os.id}')" style="width: 100%; background: #f59e0b; border-color: #d97706; color: #000; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+            <i data-lucide="rotate-ccw" style="width: 16px; height: 16px;"></i> Solicitar Reabertura da OS
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    } else {
+      actionsContainer.innerHTML = "";
+    }
     return;
   }
   
@@ -2569,6 +2612,71 @@ function cancelarOS(osId) {
   
   abrirOSDetails(osId);
   navegarPara(currentRoute);
+}
+
+// SOLICITAR REABERTURA DE OS POR INSATISFAÇÃO
+function abrirModalReabrirOS(osId) {
+  const os = AppDatabase.getDoc("os", osId, "id");
+  if (!os) return;
+  document.getElementById("reabrir-os-id").value = osId;
+  document.getElementById("reabrir-motivo").value = "";
+  abrirModal("modal-reabrir-os");
+}
+
+async function confirmarReaberturaOS(e) {
+  e.preventDefault();
+  const osId = document.getElementById("reabrir-os-id").value;
+  const motivo = document.getElementById("reabrir-motivo").value.trim();
+  if (!motivo) {
+    alert("Por favor, informe o motivo da insatisfação para reabrir o chamado.");
+    return;
+  }
+
+  const os = AppDatabase.getDoc("os", osId, "id");
+  if (!os) return;
+
+  const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
+  const updates = {
+    status: "Aberta",
+    reaberto_em: new Date().toISOString(),
+    reaberto_por: currentUserId,
+    motivo_reabertura: motivo,
+    data_finalizacao: null
+  };
+
+  // Mensagem automática no chat interno
+  const novaMsg = {
+    mensagem_texto: `⚠️ [CHAMADO REABERTO POR INSATISFAÇÃO]\nO solicitante ${currentUser.nome} reabriu esta Ordem de Serviço.\nMotivo: ${motivo}`,
+    midia_url: "",
+    tipo_midia: "nenhum",
+    enviado_por: currentUserId,
+    data_envio: new Date().toISOString()
+  };
+  updates.mensagens = [...(os.mensagens || []), novaMsg];
+
+  AppDatabase.updateDoc("os", osId, updates, "id");
+  AppDatabase.registrarLog("Reabriu a OS por insatisfação", currentUserId, osId, `OS #${osId} reaberta pelo usuário ${currentUser.nome}. Motivo: ${motivo}`);
+  await AppDatabase.registrarAuditLog(currentUserId, "os_reaberta", `Reabriu a OS #${osId} por insatisfação. Motivo: ${motivo}`);
+
+  // Notifica o técnico anterior (se houver)
+  if (os.tecnico_responsavel) {
+    AppDatabase.criarNotificacao(os.tecnico_responsavel, `ATENÇÃO: A OS #${osId} foi REABERTA por insatisfação de ${currentUser.nome}. Motivo: ${motivo}`);
+  }
+  
+  // Notifica a equipe de TI e Direção
+  const staff = AppDatabase.getCollection("users").filter(u => u.role === 'ti' || u.role === 'diretor');
+  staff.forEach(s => {
+    if (s.id !== os.tecnico_responsavel && s.uid !== os.tecnico_responsavel) {
+      AppDatabase.criarNotificacao(s.uid || s.id, `A OS #${osId} foi reaberta por insatisfação de ${currentUser.nome}.`);
+    }
+  });
+
+  fecharModal("modal-reabrir-os");
+  alert("Ordem de Serviço reaberta com sucesso! A equipe de suporte técnico foi notificada para prestar novo atendimento.");
+  abrirOSDetails(osId);
+  if (currentRoute === 'os' || currentRoute === 'dashboard') {
+    navegarPara(currentRoute);
+  }
 }
 
 // ================= SISTEMA DE CHAT SIMULADO EM TEMPO REAL =================
