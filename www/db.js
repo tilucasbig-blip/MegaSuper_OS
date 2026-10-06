@@ -801,14 +801,52 @@ const AppDatabase = {
       };
     } else if (collectionName === "equipamentos") {
       if (payload.loja_id === "") payload.loja_id = null;
-      let insertRes = await supabaseClient.from("equipamentos").insert([payload]).select();
+      
+      // Normaliza status para respeitar CHECK constraint se presente
+      let statusNorm = (payload.status || "ativo").toLowerCase();
+      if (statusNorm.includes("manut")) statusNorm = "manutencao";
+      else if (statusNorm.includes("res")) statusNorm = "reserva";
+      else if (statusNorm.includes("inat") || statusNorm.includes("baix") || statusNorm.includes("desc")) statusNorm = "descartado";
+      else statusNorm = "ativo";
+
+      const fullPayload = { ...payload };
+      let insertRes = await supabaseClient.from("equipamentos").insert([fullPayload]).select();
+      
+      // Se deu erro de FK (loja_id inexistente)
       if (insertRes.error && (insertRes.error.message.includes("violates foreign key") || insertRes.error.code === "23503")) {
-        payload.loja_id = null;
-        insertRes = await supabaseClient.from("equipamentos").insert([payload]).select();
+        fullPayload.loja_id = null;
+        insertRes = await supabaseClient.from("equipamentos").insert([fullPayload]).select();
       }
+      
+      // Se deu erro de coluna inexistente (caso o usuário ainda não tenha rodado o ALTER TABLE no Supabase)
+      if (insertRes.error && (insertRes.error.code === "42703" || insertRes.error.message.includes("does not exist") || insertRes.error.message.includes("column"))) {
+        console.warn("Tabela equipamentos sem novas colunas no Supabase. Inserindo com colunas padrão legadas.", insertRes.error);
+        const basicPayload = {
+          id: fullPayload.id,
+          nome_equipamento: fullPayload.nome_equipamento,
+          codigo_patrimonio: fullPayload.codigo_patrimonio,
+          loja_id: fullPayload.loja_id || null,
+          loja: fullPayload.loja || null,
+          dono: fullPayload.dono || null,
+          usuario: fullPayload.usuario || null,
+          marca: fullPayload.marca || null,
+          modelo: fullPayload.modelo || null,
+          numero_serie: fullPayload.numero_serie || null,
+          numero_lote: fullPayload.numero_lote || null,
+          valor_estimado: fullPayload.valor_estimado != null ? Number(fullPayload.valor_estimado) : 0,
+          status: statusNorm,
+          data_cadastro: fullPayload.data_cadastro || new Date().toISOString()
+        };
+        insertRes = await supabaseClient.from("equipamentos").insert([basicPayload]).select();
+        if (insertRes.error && (insertRes.error.message.includes("violates foreign key") || insertRes.error.code === "23503")) {
+          basicPayload.loja_id = null;
+          insertRes = await supabaseClient.from("equipamentos").insert([basicPayload]).select();
+        }
+      }
+
       if (insertRes.error) {
         console.error(`Falha ao inserir em equipamentos:`, insertRes.error);
-        throw new Error(`Não foi possível gravar equipamento: ${insertRes.error.message}`);
+        throw new Error(`Não foi possível gravar equipamento no banco: ${insertRes.error.message}`);
       }
       return insertRes.data && insertRes.data[0] ? insertRes.data[0] : payload;
     }
@@ -828,6 +866,25 @@ const AppDatabase = {
 
       if (collectionName === "users") {
         delete payload.uid;
+      }
+
+      if (collectionName === "equipamentos") {
+        if (payload.loja_id === "") payload.loja_id = null;
+        let updateRes = await supabaseClient.from("equipamentos").update(payload).eq(queryField, id).select();
+        if (updateRes.error && (updateRes.error.message.includes("violates foreign key") || updateRes.error.code === "23503")) {
+          payload.loja_id = null;
+          updateRes = await supabaseClient.from("equipamentos").update(payload).eq(queryField, id).select();
+        }
+        if (updateRes.error && (updateRes.error.code === "42703" || updateRes.error.message.includes("does not exist") || updateRes.error.message.includes("column"))) {
+          const basicUpdates = {};
+          const allowed = ['nome_equipamento', 'codigo_patrimonio', 'loja_id', 'loja', 'dono', 'usuario', 'marca', 'modelo', 'numero_serie', 'numero_lote', 'valor_estimado', 'status'];
+          allowed.forEach(k => { if (payload[k] !== undefined) basicUpdates[k] = payload[k]; });
+          updateRes = await supabaseClient.from("equipamentos").update(basicUpdates).eq(queryField, id).select();
+        }
+        if (updateRes.error) {
+          console.error(`Erro ao atualizar equipamento:`, updateRes.error);
+        }
+        return updateRes && updateRes.data && updateRes.data[0] ? updateRes.data[0] : payload;
       }
 
       if (collectionName === "os") {

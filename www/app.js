@@ -4702,7 +4702,7 @@ async function criarNovoEquipamento(e) {
   }
 
   try {
-    await AppDatabase.insertDoc("equipamentos", newEq);
+    await AppDatabase.saveDoc("equipamentos", newEq);
     await AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "equipamento_cadastrado", `Cadastrou o equipamento '${nome}' [${patrimonio}] (${tipo})`);
     
     alert(`Equipamento [${patrimonio}] cadastrado com sucesso!`);
