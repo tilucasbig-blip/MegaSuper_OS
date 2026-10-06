@@ -98,7 +98,6 @@ const AppDatabase = {
     logs: [],
     notificacoes: [],
     movimentacoes_estoque: [],
-    audit_logs: [],
     password_reset_requests: [],
     equipamentos: [],
     os_raw_temp: [],
@@ -216,7 +215,6 @@ const AppDatabase = {
         logs: this.cache.logs || [],
         notificacoes: this.cache.notificacoes || [],
         movimentacoes_estoque: this.cache.movimentacoes_estoque || [],
-        audit_logs: this.cache.audit_logs || [],
         password_reset_requests: this.cache.password_reset_requests || [],
         equipamentos: this.cache.equipamentos
       };
@@ -262,7 +260,6 @@ const AppDatabase = {
     this.cache.os_mensagens_temp = [];
     this.cache.notificacoes = [];
     this.cache.logs = [];
-    this.cache.audit_logs = [];
     this.cache.password_reset_requests = [];
     
     // Limpa travamentos de rate-limit de criação no localStorage
@@ -303,7 +300,7 @@ const AppDatabase = {
     const allCollections = [
       "users", "lojas", "estoque", "os", "os_materiais", 
       "os_mensagens", "logs", "notificacoes", "movimentacoes_estoque", 
-      "audit_logs", "password_reset_requests", "equipamentos"
+      "password_reset_requests", "equipamentos"
     ];
     const targetCollections = collectionNames || allCollections;
 
@@ -322,7 +319,6 @@ const AppDatabase = {
         else if (col === "logs") promises.push(supabaseClient.from("logs").select("*"));
         else if (col === "notificacoes") promises.push(supabaseClient.from("notificacoes").select("*"));
         else if (col === "movimentacoes_estoque") promises.push(supabaseClient.from("movimentacoes_estoque").select("*"));
-        else if (col === "audit_logs") promises.push(supabaseClient.from("audit_logs").select("*"));
         else if (col === "password_reset_requests") promises.push(supabaseClient.from("password_reset_requests").select("*"));
         else if (col === "equipamentos") promises.push(supabaseClient.from("equipamentos").select("*"));
       });
@@ -359,9 +355,6 @@ const AppDatabase = {
           }
           else if (col === "notificacoes") this.cache.notificacoes = data || [];
           else if (col === "movimentacoes_estoque") this.cache.movimentacoes_estoque = data || [];
-          else if (col === "audit_logs") {
-            this.cache.audit_logs = data || [];
-          }
           else if (col === "password_reset_requests") {
             const serverIds = new Set(data.map(d => String(d.id)));
             const currentLocal = this.cache.password_reset_requests || [];
@@ -567,7 +560,7 @@ const AppDatabase = {
 
     // Envia para o Supabase em background e gerencia a promessa na fila
     const promise = this.persistInsert(collectionName, doc).then(() => {
-      if (collectionName === "logs" || collectionName === "audit_logs") {
+      if (collectionName === "logs") {
         doc._synced = true;
         this.saveLocalCache();
       }
@@ -643,7 +636,7 @@ const AppDatabase = {
     this.pendingWrites.push(promise);
   },
 
-  // Helper para registrar log de auditoria unificado em logs e audit_logs
+  // Helper para registrar log de auditoria na tabela logs
   registrarLog(acao, feitoPorUid, osId = "", descricaoExtra = "") {
     const userId = feitoPorUid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.id) : null);
     const timestamp = new Date().toISOString();
@@ -655,53 +648,34 @@ const AppDatabase = {
       (u.usuario && String(u.usuario).toLowerCase() === String(userId).toLowerCase()) || 
       (u.email && String(u.email).toLowerCase() === String(userId).toLowerCase())
     );
-    const validUserId = userObj ? (userObj.id || userObj.uid) : null;
+    const validUserId = userObj ? (userObj.id || userObj.uid) : (userId ? String(userId) : null);
 
-    if (validUserId) {
-      this.insertDoc("logs", {
-        id: "log_" + Math.random().toString(36).substr(2, 9),
-        acao: acao,
-        feito_por: validUserId,
-        usuario_id: validUserId,
-        os_id: osId || null,
-        descricao: descricaoExtra || null,
-        data: timestamp
-      });
-    }
-
-    // Sincroniza também na coleção audit_logs (guarda a descrição completa, mesmo que anônimo)
-    this.insertDoc("audit_logs", {
-      id: "audit_" + Math.random().toString(36).substr(2, 9),
-      usuario_id: validUserId || userId,
+    this.insertDoc("logs", {
+      id: "log_" + Math.random().toString(36).substr(2, 9),
       acao: acao,
+      feito_por: validUserId,
+      usuario_id: validUserId,
       os_id: osId || null,
       descricao: descricaoExtra || acao,
-      data: timestamp,
-      data_hora: timestamp,
-      created_at: timestamp
+      data: timestamp
     });
   },
 
-  // Helper para registrar log de auditoria geral (audit_logs)
+  // Helper para registrar log de auditoria geral
   async registrarAuditLog(userId, acao, descricao) {
     const fp = window.clientFingerprint || { ip: "127.0.0.1", navegador: "Desconhecido", dispositivo: "Desktop" };
     const descComFp = descricao ? `${descricao} [Navegador: ${fp.navegador} | Dispositivo: ${fp.dispositivo}]` : `[Navegador: ${fp.navegador} | Dispositivo: ${fp.dispositivo}]`;
     this.registrarLog(acao, userId, "", descComFp);
   },
 
-  // Helper para limpar logs de auditoria e logs do sistema (Apenas Diretor)
+  // Helper para limpar logs de auditoria (Apenas Diretor)
   async limparLogs() {
-    this.cache.audit_logs = [];
     this.cache.logs = [];
     this.saveLocalCache();
     try {
       if (supabaseClient) {
-        const { error: err1 } = await supabaseClient.from("audit_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-        if (err1) {
-          await supabaseClient.from("audit_logs").delete().neq("acao", "___dummy___");
-        }
-        const { error: err2 } = await supabaseClient.from("logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-        if (err2) {
+        const { error: err } = await supabaseClient.from("logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        if (err) {
           await supabaseClient.from("logs").delete().neq("acao", "___dummy___");
         }
       }
@@ -780,7 +754,7 @@ const AppDatabase = {
       return data && data[0] ? data[0] : payload;
     }
 
-    if (["logs", "notificacoes", "movimentacoes_estoque", "audit_logs", "password_reset_requests", "os_mensagens", "os_materiais"].includes(collectionName)) {
+    if (["logs", "notificacoes", "movimentacoes_estoque", "password_reset_requests", "os_mensagens", "os_materiais"].includes(collectionName)) {
       delete payload.id;
     }
 
@@ -790,6 +764,7 @@ const AppDatabase = {
         acao: String(payload.acao || "Ação do Sistema"),
         feito_por: String(payload.feito_por || payload.usuario_id || payload.user_id || "Sistema"),
         os_id: payload.os_id ? String(payload.os_id) : null,
+        descricao: payload.descricao ? String(payload.descricao) : null,
         data: timestamp
       };
 
@@ -798,43 +773,14 @@ const AppDatabase = {
         logPayload.feito_por = null;
         insertRes = await supabaseClient.from("logs").insert([logPayload]).select();
       }
+      if (insertRes.error && (insertRes.error.message.includes("descricao") || insertRes.error.code === "PGRST204" || insertRes.error.code === "42703")) {
+        delete logPayload.descricao;
+        insertRes = await supabaseClient.from("logs").insert([logPayload]).select();
+      }
       if (insertRes.error) {
         console.warn("Aviso ao persistir logs no Supabase:", insertRes.error);
       }
       return insertRes.data && insertRes.data[0] ? insertRes.data[0] : logPayload;
-    } else if (collectionName === "audit_logs") {
-      const fp = window.clientFingerprint || {};
-      const timestamp = payload.data_hora || payload.data || new Date().toISOString();
-      const rawUserId = payload.usuario_id || payload.feito_por || null;
-      
-      let auditPayload = {
-        usuario_id: rawUserId ? String(rawUserId) : null,
-        acao: String(payload.acao || "Ação do Sistema"),
-        descricao: payload.descricao ? String(payload.descricao) : String(payload.acao || ""),
-        ip: payload.ip || fp.ip || "127.0.0.1",
-        dispositivo: payload.dispositivo || fp.dispositivo || "Navegador Web",
-        data_hora: timestamp
-      };
-
-      let insertRes = await supabaseClient.from("audit_logs").insert([auditPayload]).select();
-      
-      // Se a coluna no banco chama-se 'data' em vez de 'data_hora'
-      if (insertRes.error && (insertRes.error.message.includes("data_hora") || insertRes.error.code === "PGRST204" || insertRes.error.code === "42703")) {
-        delete auditPayload.data_hora;
-        auditPayload.data = timestamp;
-        insertRes = await supabaseClient.from("audit_logs").insert([auditPayload]).select();
-      }
-      
-      // Se a foreign key em usuario_id falhar
-      if (insertRes.error && (insertRes.error.message.includes("violates foreign key") || insertRes.error.code === "23503")) {
-        auditPayload.usuario_id = null;
-        insertRes = await supabaseClient.from("audit_logs").insert([auditPayload]).select();
-      }
-
-      if (insertRes.error) {
-        console.warn("Aviso ao persistir audit_logs no Supabase:", insertRes.error);
-      }
-      return insertRes.data && insertRes.data[0] ? insertRes.data[0] : auditPayload;
     } else if (collectionName === "users") {
       if (payload.uid) {
         payload.id = payload.uid;

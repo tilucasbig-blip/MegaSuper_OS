@@ -403,7 +403,7 @@ function iniciarAutoRefresh30s() {
       // 1. Sincroniza os dados mais recentes do banco (sempre incluindo usuários para validar sessão ativa)
       let targetCols = ["users", "os", "os_materiais", "os_mensagens", "notificacoes"];
       if (currentRoute === 'estoque') targetCols.push("estoque", "movimentacoes_estoque");
-      else if (currentRoute === 'logs') targetCols.push("logs", "audit_logs");
+      else if (currentRoute === 'logs') targetCols.push("logs");
       else if (currentRoute === 'usuarios') targetCols.push("password_reset_requests");
       else if (currentRoute === 'equipamentos') targetCols.push("equipamentos", "lojas");
       else if (currentRoute === 'dashboard') targetCols.push("estoque");
@@ -755,7 +755,7 @@ async function navegarPara(route) {
   if (route === 'estoque') {
     targetCols.push("estoque", "movimentacoes_estoque");
   } else if (route === 'logs') {
-    targetCols.push("logs", "audit_logs");
+    targetCols.push("logs");
   } else if (route === 'usuarios') {
     targetCols.push("users", "password_reset_requests");
   } else if (route === 'equipamentos') {
@@ -1389,7 +1389,7 @@ async function recarregarLogsManual() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   try {
-    await AppDatabase.load(["audit_logs", "users", "os"]);
+    await AppDatabase.load(["logs", "users", "os"]);
     renderLogs();
   } catch (e) {
     console.error("Erro ao recarregar logs de auditoria:", e);
@@ -1458,12 +1458,12 @@ function renderLogs() {
   const contentBody = document.getElementById("content-body");
   if (!contentBody) return;
 
-  const auditCol = AppDatabase.getCollection("audit_logs") || [];
+  const logsCol = AppDatabase.getCollection("logs") || [];
   const users = AppDatabase.getCollection("users") || [];
 
   // Filtra e prepara logs de auditoria
   const seenKeys = new Set();
-  const allLogs = auditCol
+  const allLogs = logsCol
     .filter(l => {
       if (!l || !l.acao) return false;
       const acaoLower = String(l.acao).toLowerCase();
