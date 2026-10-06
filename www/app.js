@@ -503,7 +503,6 @@ async function loginComSucesso(uid, registrarLogs = true) {
   if (registrarLogs) {
     // Registra auditoria de login apenas em logins explícitos
     await AppDatabase.registrarAuditLog(currentUser.uid || currentUser.id, "login", `Login efetuado com sucesso (Matrícula/Usuário: ${currentUser.usuario || 'N/A'}, Cargo: ${currentUser.cargo || currentUser.role})`);
-    AppDatabase.registrarLog("Efetuou login no sistema", currentUser.uid || currentUser.id);
   }
   
   // Sincroniza dados e navega para recarregar
@@ -1468,6 +1467,7 @@ function renderLogs() {
   const users = AppDatabase.getCollection("users") || [];
 
   // Filtra e prepara logs de auditoria
+  const seenKeys = new Set();
   const allLogs = auditCol
     .filter(l => {
       if (!l || !l.acao) return false;
@@ -1488,6 +1488,12 @@ function renderLogs() {
         if (match) osId = match[1];
       }
       return { ...l, os_id: osId, _time: timeMs };
+    })
+    .filter(l => {
+      const key = l.id ? String(l.id) : `${l.acao}|${l.usuario_id || l.feito_por}|${Math.floor((l._time || 0) / 3000)}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
     })
     .sort((a, b) => (b._time || 0) - (a._time || 0));
 

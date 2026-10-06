@@ -373,26 +373,12 @@ const AppDatabase = {
             this.cache.estoque = [...data, ...pendingLocal];
           }
           else if (col === "logs") {
-            const serverIds = new Set(data.map(d => String(d.id)));
-            const currentLocal = this.cache.logs || [];
-            const pendingLocal = currentLocal.filter(l => {
-              if (serverIds.has(String(l.id))) return false;
-              const lTime = l.data || l.data_hora || l.created_at;
-              return !data.some(d => d.acao === l.acao && (d.data === lTime || d.data_hora === lTime));
-            });
-            this.cache.logs = [...data, ...pendingLocal];
+            this.cache.logs = data || [];
           }
-          else if (col === "notificacoes") this.cache.notificacoes = data;
-          else if (col === "movimentacoes_estoque") this.cache.movimentacoes_estoque = data;
+          else if (col === "notificacoes") this.cache.notificacoes = data || [];
+          else if (col === "movimentacoes_estoque") this.cache.movimentacoes_estoque = data || [];
           else if (col === "audit_logs") {
-            const serverIds = new Set(data.map(d => String(d.id)));
-            const currentLocal = this.cache.audit_logs || [];
-            const pendingLocal = currentLocal.filter(l => {
-              if (serverIds.has(String(l.id))) return false;
-              const lTime = l.data_hora || l.data || l.created_at;
-              return !data.some(d => d.acao === l.acao && (d.data_hora === lTime || d.data === lTime));
-            });
-            this.cache.audit_logs = [...data, ...pendingLocal];
+            this.cache.audit_logs = data || [];
           }
           else if (col === "password_reset_requests") {
             const serverIds = new Set(data.map(d => String(d.id)));
