@@ -1493,10 +1493,17 @@ function renderLogs() {
       return { ...l, os_id: osId, _time: timeMs };
     })
     .filter(l => {
-      // Deduplica logs com mesma ação e autor na janela de 10 segundos
+      // Se tiver ID do banco, deduplica apenas pelo ID
+      if (l.id) {
+        const idKey = String(l.id);
+        if (seenKeys.has(idKey)) return false;
+        seenKeys.add(idKey);
+        return true;
+      }
+      // Para itens locais sem ID, deduplica na janela de 3 segundos
       const author = String(l.usuario_id || l.feito_por || 'sistema').toLowerCase();
-      const timeWindow = Math.floor((l._time || 0) / 10000);
-      const key = `${String(l.acao).trim().toLowerCase()}|${author}|${timeWindow}`;
+      const timeWindow = Math.floor((l._time || 0) / 3000);
+      const key = `${String(l.acao).trim().toLowerCase()}|${author}|${l.os_id || ''}|${timeWindow}`;
       if (seenKeys.has(key)) return false;
       seenKeys.add(key);
       return true;
@@ -1532,9 +1539,14 @@ function renderLogs() {
       const rotulosAcao = {
         login: "Login no Sistema",
         logout: "Logout do Sistema",
-        login_falha: "Tentativa de Login Falhou",
-        login_bloqueado: "Tentativa de Login Bloqueada",
-        conta_bloqueada_temp: "Conta Bloqueada Temporariamente",
+        "Ordem de Serviço criada": "Abertura de Ordem de Serviço",
+        os_criada: "Abertura de Ordem de Serviço",
+        "Iniciou atendimento da OS": "Início de Atendimento Técnico",
+        "Adicionou materiais usados na OS": "Materiais Utilizados na OS",
+        "Aprovou materiais da OS": "Aprovação de Materiais pelo Diretor",
+        "Rejeitou materiais da OS": "Rejeição de Materiais pelo Diretor",
+        "Finalizou a OS": "Conclusão de Chamado",
+        "Cancelou a OS": "Cancelamento de Chamado",
         usuario_criado: "Criação de Usuário",
         usuario_excluido: "Exclusão de Usuário",
         usuario_editado: "Edição de Usuário",

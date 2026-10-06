@@ -690,11 +690,13 @@ const AppDatabase = {
     // Sincroniza também na coleção audit_logs (guarda a descrição completa, mesmo que anônimo)
     this.insertDoc("audit_logs", {
       id: "audit_" + Math.random().toString(36).substr(2, 9),
-      usuario_id: validUserId,
+      usuario_id: validUserId || userId,
       acao: acao,
       os_id: osId || null,
       descricao: descricaoExtra || acao,
-      data: timestamp
+      data: timestamp,
+      data_hora: timestamp,
+      created_at: timestamp
     });
   },
 
