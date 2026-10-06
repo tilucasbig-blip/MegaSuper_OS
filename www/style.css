@@ -200,12 +200,12 @@ html.has-saved-session #app {
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(4, 4, 4, 0.2);
 }
 
 .btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 6px 16px rgba(244, 8, 8, 0.3);
 }
 
 .btn:active {
@@ -220,7 +220,7 @@ html.has-saved-session #app {
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(224, 11, 85, 0.05);
   border-color: var(--text-secondary);
   box-shadow: none;
 }
@@ -1479,9 +1479,9 @@ html.has-saved-session #app {
   align-items: center;
   min-height: 100vh;
   width: 100%;
-  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%),
-    #090d16;
+  background: radial-gradient(circle at 10% 20%, rgba(255, 7, 7, 0.838) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(255, 3, 3, 0.979) 0%, transparent 40%),
+    #ff8c00;
   padding: 20px;
   position: fixed;
   top: 0;
@@ -1493,7 +1493,7 @@ html.has-saved-session #app {
 .login-card {
   width: 100%;
   max-width: 440px;
-  background: rgba(16, 22, 34, 0.85);
+  background: rgba(240, 94, 10, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1512,13 +1512,13 @@ html.has-saved-session #app {
   width: 56px;
   height: 56px;
   background: linear-gradient(135deg, var(--brand-color), var(--brand-hover));
-  color: white;
+  color: rgb(12, 12, 12);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 16px rgba(3, 3, 3, 0.3);
 }
 
 .login-logo-icon i {
@@ -1527,7 +1527,7 @@ html.has-saved-session #app {
 }
 
 .login-header h2 {
-  font-size: 22px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.5px;
   margin-bottom: 8px;
@@ -1543,7 +1543,7 @@ html.has-saved-session #app {
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin-bottom: 400px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1557,7 +1557,7 @@ html.has-saved-session #app {
 }
 
 .login-alert.success {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(6, 221, 150, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.2);
   color: var(--status-finalizada);
 }
