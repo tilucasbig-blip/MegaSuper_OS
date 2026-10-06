@@ -2211,12 +2211,7 @@ function renderOSActionsButtons(os) {
   actionsContainer.innerHTML = "";
   
   if (os.status === 'Finalizada') {
-    actionsContainer.innerHTML = `
-      <button class="btn btn-success" onclick="abrirEImprimirRelatorio('${os.id}')" style="width: 100%;">
-        <i data-lucide="printer"></i> Visualizar & Imprimir Relatório PDF / QR
-      </button>
-    `;
-    lucide.createIcons();
+    actionsContainer.innerHTML = "";
     return;
   }
   
