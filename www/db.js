@@ -672,24 +672,31 @@ const AppDatabase = {
     const userId = feitoPorUid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.id) : null);
     const timestamp = new Date().toISOString();
 
-    // A tabela 'logs' exige feito_por válido (FK para users). Eventos anônimos (ex.: login com usuário inexistente) ficam só em audit_logs.
-    const autorValido = userId && (this.cache.users || []).some(u => String(u.id || u.uid) === String(userId));
-    if (autorValido) {
+    // Localiza o ID de usuário válido cadastrado no banco (FK)
+    const userObj = (this.cache.users || []).find(u => 
+      String(u.id) === String(userId) || 
+      String(u.uid) === String(userId) || 
+      (u.usuario && String(u.usuario).toLowerCase() === String(userId).toLowerCase()) || 
+      (u.email && String(u.email).toLowerCase() === String(userId).toLowerCase())
+    );
+    const validUserId = userObj ? (userObj.id || userObj.uid) : null;
+
+    if (validUserId) {
       this.insertDoc("logs", {
         id: "log_" + Math.random().toString(36).substr(2, 9),
         acao: acao,
-        feito_por: userId,
-        usuario_id: userId,
+        feito_por: validUserId,
+        usuario_id: validUserId,
         os_id: osId || null,
         descricao: descricaoExtra || null,
         data: timestamp
       });
     }
 
-    // Sincroniza também na coleção audit_logs (guarda a descrição e o autor, mesmo que anônimo)
+    // Sincroniza também na coleção audit_logs (guarda a descrição completa, mesmo que anônimo)
     this.insertDoc("audit_logs", {
       id: "audit_" + Math.random().toString(36).substr(2, 9),
-      usuario_id: autorValido ? userId : null,
+      usuario_id: validUserId,
       acao: acao,
       os_id: osId || null,
       descricao: descricaoExtra || acao,

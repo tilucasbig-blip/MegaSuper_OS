@@ -1966,7 +1966,7 @@ async function criarNovaOS(e) {
     
     // Gravação confirmada no Supabase: se falhar, o erro sobe para o catch e o usuário é avisado (sem fingir sucesso)
     await AppDatabase.insertDocConfirmed("os", novaOS);
-    AppDatabase.registrarLog("Ordem de Serviço criada", currentUserId, novoId);
+    AppDatabase.registrarLog("Ordem de Serviço criada", currentUserId, novoId, `Abriu a OS #${novoId} para ${equipamento} em ${loja} - "${titulo}"`);
     
     // Notifica técnicos de TI e diretores
     const staff = AppDatabase.getCollection("users").filter(u => u.role === 'ti' || u.role === 'diretor');
@@ -2225,7 +2225,7 @@ function iniciarAtendimentoOS(osId) {
   };
   
   const os = AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Iniciou atendimento da OS", currentUserId, osId);
+  AppDatabase.registrarLog("Iniciou atendimento da OS", currentUserId, osId, `Técnico ${currentUser.nome} iniciou o atendimento técnico da OS #${osId}`);
   if (os.criado_por) {
     AppDatabase.criarNotificacao(os.criado_por, `O Técnico ${currentUser.nome} iniciou o atendimento de sua OS #${osId}.`);
   }
@@ -2357,8 +2357,9 @@ function adicionarMaterialOS(e) {
     custo_total_materiais: novoCustoTotal
   };
   
+  const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
   AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Adicionou materiais usados na OS", currentUser.uid, osId);
+  AppDatabase.registrarLog("Adicionou materiais usados na OS", currentUserId, osId, `Adicionou ${quantidade}x ${nomeMaterial} (R$ ${(quantidade * valorUnitario).toFixed(2)}) à OS #${osId}`);
   
   fecharModal("modal-adicionar-material");
   abrirOSDetails(osId);
@@ -2371,6 +2372,7 @@ function diretorAprovarOS(osId) {
   const os = AppDatabase.getDoc("os", osId, "id");
   if (!os) return;
   
+  const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
   // Abater estoques dos materiais cadastrados
   const estoqueList = AppDatabase.getCollection("estoque");
   
@@ -2407,7 +2409,7 @@ function diretorAprovarOS(osId) {
   };
   
   AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Aprovou materiais da OS", currentUser.uid, osId);
+  AppDatabase.registrarLog("Aprovou materiais da OS", currentUserId, osId, `Diretor ${currentUser.nome} aprovou os materiais da OS #${osId}`);
   
   // Notifica técnico responsável
   if (os.tecnico_responsavel) {
@@ -2433,6 +2435,7 @@ function confirmarRejeicaoMaterial(e) {
   const os = AppDatabase.getDoc("os", osId, "id");
   if (!os) return;
   
+  const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
   const updates = {
     status: "Rejeitada por Diretor",
     material_aprovado: false,
@@ -2440,7 +2443,7 @@ function confirmarRejeicaoMaterial(e) {
   };
   
   AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Rejeitou materiais da OS", currentUser.uid, osId);
+  AppDatabase.registrarLog("Rejeitou materiais da OS", currentUserId, osId, `Diretor ${currentUser.nome} rejeitou materiais da OS #${osId}. Motivo: ${motivo}`);
   
   // Notifica técnico responsável
   if (os.tecnico_responsavel) {
@@ -2457,13 +2460,14 @@ function finalizarOS(osId) {
   const confirmacao = confirm("Deseja realmente finalizar esta Ordem de Serviço? Isso gerará o PDF e QR Code técnico.");
   if (!confirmacao) return;
   
+  const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
   const updates = {
     status: "Finalizada",
     data_finalizacao: new Date().toISOString()
   };
   
   const os = AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Finalizou a OS", currentUser.uid, osId);
+  AppDatabase.registrarLog("Finalizou a OS", currentUserId, osId, `OS #${osId} finalizada e concluída por ${currentUser.nome}`);
   if (os.criado_por) {
     AppDatabase.criarNotificacao(os.criado_por, `Sua Ordem de Serviço #${osId} foi finalizada com sucesso! Relatório técnico já disponível.`);
   }
@@ -2477,13 +2481,14 @@ function cancelarOS(osId) {
   const confirmacao = confirm("Deseja realmente cancelar esta Ordem de Serviço?");
   if (!confirmacao) return;
   
+  const currentUserId = currentUser ? (currentUser.uid || currentUser.id) : null;
   const updates = {
     status: "Cancelada",
     data_finalizacao: new Date().toISOString()
   };
   
   const os = AppDatabase.updateDoc("os", osId, updates, "id");
-  AppDatabase.registrarLog("Cancelou a OS", currentUser.uid, osId);
+  AppDatabase.registrarLog("Cancelou a OS", currentUserId, osId, `OS #${osId} cancelada por ${currentUser.nome}`);
   if (os.criado_por) {
     AppDatabase.criarNotificacao(os.criado_por, `Sua Ordem de Serviço #${osId} foi cancelada.`);
   }
