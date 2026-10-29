@@ -4,9 +4,9 @@
  * Configurado para rodar com RLS ativo (Opção B - com login real via Anon Key).
  */
 
-const SUPABASE_URL = "https://jeoxslbhhmgcifyjzbic.supabase.co";
+const SUPABASE_URL = "https://xozkvotgjtwjdlrfhkez.supabase.co";
 // Chave pública (publishable) do projeto Supabase para respeitar e testar as políticas RLS
-const SUPABASE_KEY = "sb_publishable_tFWnok6olNFdDUU4AJDO2w_rORih4zR";
+const SUPABASE_KEY = "sb_publishable_5PmfZgxqBY_oBdPBqzLfNw_RHcPLZbf";
 
 // Inicializa o cliente do Supabase
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
